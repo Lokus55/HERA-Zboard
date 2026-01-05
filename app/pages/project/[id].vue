@@ -32,7 +32,7 @@
 
     <!-- Sidebar -->
     <aside 
-      class="fixed lg:relative inset-y-0 left-0 z-50 w-72 lg:w-64 border-r border-neutral-800 p-4 flex flex-col bg-neutral-950 transform transition-transform duration-300 lg:transform-none"
+      class="fixed lg:relative inset-y-0 left-0 z-50 w-72 lg:w-64 border-r border-neutral-800 p-4 flex flex-col bg-neutral-950 transform transition-transform duration-300 lg:transform-none overflow-y-auto"
       :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
     >
       <div class="flex items-center justify-between mb-8">
@@ -49,7 +49,7 @@
         </button>
       </div>
 
-      <nav class="flex-1 space-y-1 overflow-y-auto">
+      <nav class="flex-1 space-y-1">
         <NuxtLink to="/dashboard" class="sidebar-item" @click="sidebarOpen = false">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -59,7 +59,7 @@
 
         <!-- Filtro por usuario -->
         <div class="pt-4 pb-2">
-          <span class="px-3 text-xs font-medium text-neutral-500 uppercase">Filtrar por</span>
+          <span class="px-3 text-xs font-medium text-neutral-500 uppercase">Filtrar por usuario</span>
         </div>
         
         <button 
@@ -91,12 +91,6 @@
             {{ getInitials(member.full_name || member.email) }}
           </div>
           <span class="truncate">{{ member.full_name || member.email?.split('@')[0] }}</span>
-          
-          <!-- Tooltip (solo desktop) -->
-          <div class="hidden lg:block absolute left-full ml-2 px-2 py-1 bg-neutral-800 rounded text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-            <div class="font-medium">{{ member.full_name || 'Sin nombre' }}</div>
-            <div class="text-neutral-400">{{ member.email }}</div>
-          </div>
         </button>
 
         <button @click="showInvite = true; sidebarOpen = false" class="sidebar-item w-full text-left text-cyan-400">
@@ -104,6 +98,40 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4" />
           </svg>
           Invitar miembro
+        </button>
+
+        <!-- Filtro por etiqueta -->
+        <div class="pt-4 pb-2">
+          <span class="px-3 text-xs font-medium text-neutral-500 uppercase">Etiquetas</span>
+        </div>
+
+        <button 
+          @click="filterByLabel = null; sidebarOpen = false" 
+          class="sidebar-item w-full text-left"
+          :class="{ 'sidebar-item-active': filterByLabel === null }"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+          </svg>
+          Todas
+        </button>
+
+        <button
+          v-for="label in labels" 
+          :key="label.id" 
+          @click="filterByLabel = label.id; sidebarOpen = false"
+          class="sidebar-item w-full text-left"
+          :class="{ 'sidebar-item-active': filterByLabel === label.id }"
+        >
+          <div class="w-3 h-3 rounded-full flex-shrink-0" :style="{ backgroundColor: label.color }" />
+          <span class="truncate">{{ label.name }}</span>
+        </button>
+
+        <button @click="showAddLabel = true; sidebarOpen = false" class="sidebar-item w-full text-left text-cyan-400">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4" />
+          </svg>
+          Nueva etiqueta
         </button>
       </nav>
     </aside>
@@ -125,7 +153,10 @@
               <p class="text-sm text-neutral-400">
                 {{ filteredTasks.length }} tareas
                 <span v-if="filterByUser" class="text-cyan-400">
-                  · Filtrando por {{ getMemberName(filterByUser) }}
+                  · {{ getMemberName(filterByUser) }}
+                </span>
+                <span v-if="filterByLabel" class="text-cyan-400">
+                  · {{ getLabelName(filterByLabel) }}
                 </span>
               </p>
             </div>
@@ -141,7 +172,7 @@
         </div>
       </header>
 
-      <!-- Mobile Filter/Actions Bar -->
+      <!-- Mobile Filter Bar -->
       <div class="lg:hidden border-b border-neutral-800 p-3 flex items-center gap-2 overflow-x-auto">
         <span class="text-xs text-neutral-500 flex-shrink-0">{{ filteredTasks.length }} tareas</span>
         <div class="flex-1" />
@@ -190,6 +221,19 @@
                     class="card p-3 lg:p-4 cursor-pointer hover:border-neutral-700 transition-colors active:scale-[0.98]"
                   >
                     <h4 class="font-medium text-sm lg:text-base mb-2 line-clamp-2">{{ element.title }}</h4>
+                    
+                    <!-- Labels -->
+                    <div v-if="element.labels?.length" class="flex flex-wrap gap-1 mb-2">
+                      <span
+                        v-for="label in element.labels"
+                        :key="label.id"
+                        class="text-[10px] px-1.5 py-0.5 rounded-full text-white"
+                        :style="{ backgroundColor: label.color }"
+                      >
+                        {{ label.name }}
+                      </span>
+                    </div>
+
                     <div class="flex items-center justify-between">
                       <span 
                         class="text-xs px-2 py-0.5 rounded-full"
@@ -203,14 +247,10 @@
                         <div
                           v-for="(assignee, idx) in element.assignees.slice(0, 3)"
                           :key="assignee.user_id"
-                          class="w-5 h-5 lg:w-6 lg:h-6 rounded-full border-2 border-neutral-900 flex items-center justify-center text-[10px] lg:text-xs text-white cursor-pointer relative group"
+                          class="w-5 h-5 lg:w-6 lg:h-6 rounded-full border-2 border-neutral-900 flex items-center justify-center text-[10px] lg:text-xs text-white"
                           :style="{ backgroundColor: getAvatarColor(assignee.user_id), zIndex: 3 - idx }"
                         >
                           {{ getInitials(assignee.full_name || assignee.email) }}
-                          <!-- Tooltip (solo desktop) -->
-                          <div class="hidden lg:block absolute bottom-full mb-1 left-1/2 -translate-x-1/2 px-2 py-1 bg-neutral-800 rounded text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                            {{ assignee.full_name || assignee.email }}
-                          </div>
                         </div>
                         <div
                           v-if="element.assignees.length > 3"
@@ -255,7 +295,14 @@
           
           <div>
             <label class="block text-sm font-medium text-neutral-400 mb-1.5">Descripción</label>
-            <textarea v-model="taskForm.description" class="input" rows="3" placeholder="Detalles de la tarea..."></textarea>
+            <textarea 
+              v-model="taskForm.description" 
+              class="input" 
+              rows="3" 
+              placeholder="Detalles... usa @nombre para mencionar"
+              @input="checkMentions"
+            ></textarea>
+            <p class="text-xs text-neutral-500 mt-1">Usa @nombre para mencionar a alguien</p>
           </div>
 
           <div class="grid grid-cols-2 gap-3 sm:gap-4">
@@ -275,10 +322,37 @@
             </div>
           </div>
 
+          <!-- Etiquetas -->
+          <div>
+            <label class="block text-sm font-medium text-neutral-400 mb-1.5">Etiquetas</label>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="label in labels"
+                :key="label.id"
+                type="button"
+                @click="toggleLabel(label.id)"
+                class="text-xs px-2 py-1 rounded-full border transition-colors"
+                :class="taskForm.label_ids.includes(label.id) 
+                  ? 'text-white border-transparent' 
+                  : 'text-neutral-400 border-neutral-700 hover:border-neutral-500'"
+                :style="taskForm.label_ids.includes(label.id) ? { backgroundColor: label.color } : {}"
+              >
+                {{ label.name }}
+              </button>
+              <button
+                type="button"
+                @click="showAddLabel = true"
+                class="text-xs px-2 py-1 rounded-full border border-dashed border-neutral-700 text-neutral-500 hover:text-neutral-300"
+              >
+                + Nueva
+              </button>
+            </div>
+          </div>
+
           <!-- Asignados múltiples -->
           <div>
             <label class="block text-sm font-medium text-neutral-400 mb-1.5">Asignar a</label>
-            <div class="space-y-1 max-h-40 overflow-y-auto">
+            <div class="space-y-1 max-h-32 overflow-y-auto">
               <label 
                 v-for="member in members" 
                 :key="member.user_id"
@@ -298,7 +372,6 @@
                 </div>
                 <div class="flex-1 min-w-0">
                   <div class="text-sm truncate">{{ member.full_name || member.email?.split('@')[0] }}</div>
-                  <div class="text-xs text-neutral-500 truncate">{{ member.email }}</div>
                 </div>
               </label>
             </div>
@@ -311,6 +384,44 @@
             <div class="flex-1"></div>
             <button type="button" @click="closeTaskModal" class="btn-secondary text-sm">Cancelar</button>
             <button type="submit" class="btn-primary text-sm">{{ editingTask ? 'Guardar' : 'Crear' }}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal Nueva Etiqueta -->
+    <div v-if="showAddLabel" class="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
+      <div class="card p-4 sm:p-6 w-full sm:max-w-sm rounded-t-2xl sm:rounded-xl">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold">Nueva etiqueta</h2>
+          <button @click="showAddLabel = false" class="p-2 -mr-2 text-neutral-400 hover:text-white">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <form @submit.prevent="saveLabel" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-neutral-400 mb-1.5">Nombre</label>
+            <input v-model="labelForm.name" type="text" class="input" placeholder="frontend, bug, urgente..." required>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-neutral-400 mb-1.5">Color</label>
+            <div class="flex gap-2 flex-wrap">
+              <button
+                v-for="color in labelColors"
+                :key="color"
+                type="button"
+                @click="labelForm.color = color"
+                class="w-8 h-8 rounded-lg transition-transform hover:scale-110"
+                :class="{ 'ring-2 ring-white': labelForm.color === color }"
+                :style="{ backgroundColor: color }"
+              />
+            </div>
+          </div>
+          <div class="flex gap-3 pt-2">
+            <button type="button" @click="showAddLabel = false" class="btn-secondary flex-1 text-sm">Cancelar</button>
+            <button type="submit" class="btn-primary flex-1 text-sm">Crear</button>
           </div>
         </form>
       </div>
@@ -375,7 +486,7 @@
             <input v-model="inviteEmail" type="email" class="input" placeholder="email@ejemplo.com" required>
           </div>
           <p class="text-sm text-neutral-500">
-            El usuario debe estar registrado en Flowboard para poder ser invitado.
+            El usuario debe estar registrado en Flowboard.
           </p>
           <div v-if="inviteError" class="text-red-400 text-sm">{{ inviteError }}</div>
           <div v-if="inviteSuccess" class="text-green-400 text-sm">{{ inviteSuccess }}</div>
@@ -403,7 +514,9 @@ const project = ref<any>(null)
 const tasks = ref<any[]>([])
 const statuses = ref<any[]>([])
 const members = ref<any[]>([])
+const labels = ref<any[]>([])
 const filterByUser = ref<string | null>(null)
+const filterByLabel = ref<string | null>(null)
 const sidebarOpen = ref(false)
 
 // Task Modal
@@ -414,8 +527,14 @@ const taskForm = ref({
   description: '',
   status_id: '',
   priority: 'medium',
-  assignee_ids: [] as string[]
+  assignee_ids: [] as string[],
+  label_ids: [] as string[]
 })
+
+// Label Modal
+const showAddLabel = ref(false)
+const labelForm = ref({ name: '', color: '#6366f1' })
+const labelColors = ['#ef4444', '#f59e0b', '#10b981', '#06b6d4', '#6366f1', '#8b5cf6', '#ec4899', '#78716c']
 
 // Column Modal
 const showAddColumn = ref(false)
@@ -432,10 +551,21 @@ const inviteSuccess = ref('')
 
 // Computed
 const filteredTasks = computed(() => {
-  if (!filterByUser.value) return tasks.value
-  return tasks.value.filter(t => 
-    t.assignees?.some((a: any) => a.user_id === filterByUser.value)
-  )
+  let result = tasks.value
+  
+  if (filterByUser.value) {
+    result = result.filter(t => 
+      t.assignees?.some((a: any) => a.user_id === filterByUser.value)
+    )
+  }
+  
+  if (filterByLabel.value) {
+    result = result.filter(t => 
+      t.labels?.some((l: any) => l.id === filterByLabel.value)
+    )
+  }
+  
+  return result
 })
 
 const getTasksByStatus = (statusId: string) => {
@@ -461,6 +591,11 @@ const getMemberName = (userId: string) => {
   return member?.full_name || member?.email?.split('@')[0] || 'Usuario'
 }
 
+const getLabelName = (labelId: string) => {
+  const label = labels.value.find(l => l.id === labelId)
+  return label?.name || 'Etiqueta'
+}
+
 const priorityClass = (priority: string) => ({
   'bg-red-500/20 text-red-400': priority === 'high',
   'bg-amber-500/20 text-amber-400': priority === 'medium',
@@ -475,6 +610,41 @@ const priorityLabel = (priority: string) => {
 const getUserId = (u: any): string | null => {
   if (!u) return null
   return u.id || u.sub || null
+}
+
+const toggleLabel = (labelId: string) => {
+  const idx = taskForm.value.label_ids.indexOf(labelId)
+  if (idx > -1) {
+    taskForm.value.label_ids.splice(idx, 1)
+  } else {
+    taskForm.value.label_ids.push(labelId)
+  }
+}
+
+// Check for @mentions in description
+const checkMentions = () => {
+  // This is called on input, we'll process mentions when saving
+}
+
+const extractMentions = (text: string): string[] => {
+  const mentionRegex = /@(\w+)/g
+  const mentions: string[] = []
+  let match
+  while ((match = mentionRegex.exec(text)) !== null) {
+    mentions.push(match[1].toLowerCase())
+  }
+  return mentions
+}
+
+// Create notification
+const createNotification = async (userId: string, type: string, title: string, message: string, link: string) => {
+  await supabase.from('notifications').insert({
+    user_id: userId,
+    type,
+    title,
+    message,
+    link
+  })
 }
 
 // Drag & Drop
@@ -498,7 +668,8 @@ const openNewTask = () => {
     description: '', 
     status_id: statuses.value[0]?.id || '', 
     priority: 'medium', 
-    assignee_ids: []
+    assignee_ids: [],
+    label_ids: []
   }
   showTaskModal.value = true
 }
@@ -510,7 +681,8 @@ const addTaskToColumn = (statusId: string) => {
     description: '', 
     status_id: statusId, 
     priority: 'medium', 
-    assignee_ids: []
+    assignee_ids: [],
+    label_ids: []
   }
   showTaskModal.value = true
 }
@@ -522,7 +694,8 @@ const openEditTask = (task: any) => {
     description: task.description || '',
     status_id: task.status_id,
     priority: task.priority,
-    assignee_ids: task.assignees?.map((a: any) => a.user_id) || []
+    assignee_ids: task.assignees?.map((a: any) => a.user_id) || [],
+    label_ids: task.labels?.map((l: any) => l.id) || []
   }
   showTaskModal.value = true
 }
@@ -536,8 +709,10 @@ const saveTask = async () => {
   if (!taskForm.value.title.trim()) return
 
   const userId = getUserId(user.value)
+  const previousAssignees = editingTask.value?.assignees?.map((a: any) => a.user_id) || []
 
   if (editingTask.value) {
+    // Update task
     const { error } = await supabase
       .from('tasks')
       .update({
@@ -550,6 +725,7 @@ const saveTask = async () => {
       .eq('id', editingTask.value.id)
 
     if (!error) {
+      // Update assignees
       await supabase.from('task_assignees').delete().eq('task_id', editingTask.value.id)
       if (taskForm.value.assignee_ids.length > 0) {
         await supabase.from('task_assignees').insert(
@@ -558,14 +734,63 @@ const saveTask = async () => {
             user_id: uid
           }))
         )
+        
+        // Notify newly assigned users
+        const newAssignees = taskForm.value.assignee_ids.filter(id => !previousAssignees.includes(id))
+        for (const assigneeId of newAssignees) {
+          if (assigneeId !== userId) {
+            await createNotification(
+              assigneeId,
+              'task_assigned',
+              'Nueva tarea asignada',
+              `Te han asignado la tarea "${taskForm.value.title}"`,
+              `/project/${projectId}`
+            )
+          }
+        }
+      }
+
+      // Update labels
+      await supabase.from('task_labels').delete().eq('task_id', editingTask.value.id)
+      if (taskForm.value.label_ids.length > 0) {
+        await supabase.from('task_labels').insert(
+          taskForm.value.label_ids.map(lid => ({
+            task_id: editingTask.value.id,
+            label_id: lid
+          }))
+        )
+      }
+
+      // Check for @mentions
+      const mentions = extractMentions(taskForm.value.description)
+      for (const mention of mentions) {
+        const mentionedMember = members.value.find(m => 
+          m.full_name?.toLowerCase().includes(mention) || 
+          m.email?.split('@')[0].toLowerCase() === mention
+        )
+        if (mentionedMember && mentionedMember.user_id !== userId) {
+          await createNotification(
+            mentionedMember.user_id,
+            'mentioned',
+            'Te mencionaron en una tarea',
+            `Te mencionaron en "${taskForm.value.title}"`,
+            `/project/${projectId}`
+          )
+        }
       }
       
+      // Update in memory
       Object.assign(editingTask.value, {
-        ...taskForm.value,
-        assignees: members.value.filter(m => taskForm.value.assignee_ids.includes(m.user_id))
+        title: taskForm.value.title,
+        description: taskForm.value.description,
+        status_id: taskForm.value.status_id,
+        priority: taskForm.value.priority,
+        assignees: members.value.filter(m => taskForm.value.assignee_ids.includes(m.user_id)),
+        labels: labels.value.filter(l => taskForm.value.label_ids.includes(l.id))
       })
     }
   } else {
+    // Create task
     const { data, error } = await supabase
       .from('tasks')
       .insert({
@@ -581,6 +806,7 @@ const saveTask = async () => {
       .single()
 
     if (!error && data) {
+      // Add assignees
       if (taskForm.value.assignee_ids.length > 0) {
         await supabase.from('task_assignees').insert(
           taskForm.value.assignee_ids.map(uid => ({
@@ -588,9 +814,51 @@ const saveTask = async () => {
             user_id: uid
           }))
         )
+        
+        // Notify assigned users
+        for (const assigneeId of taskForm.value.assignee_ids) {
+          if (assigneeId !== userId) {
+            await createNotification(
+              assigneeId,
+              'task_assigned',
+              'Nueva tarea asignada',
+              `Te han asignado la tarea "${taskForm.value.title}"`,
+              `/project/${projectId}`
+            )
+          }
+        }
+      }
+
+      // Add labels
+      if (taskForm.value.label_ids.length > 0) {
+        await supabase.from('task_labels').insert(
+          taskForm.value.label_ids.map(lid => ({
+            task_id: data.id,
+            label_id: lid
+          }))
+        )
+      }
+
+      // Check for @mentions
+      const mentions = extractMentions(taskForm.value.description)
+      for (const mention of mentions) {
+        const mentionedMember = members.value.find(m => 
+          m.full_name?.toLowerCase().includes(mention) || 
+          m.email?.split('@')[0].toLowerCase() === mention
+        )
+        if (mentionedMember && mentionedMember.user_id !== userId) {
+          await createNotification(
+            mentionedMember.user_id,
+            'mentioned',
+            'Te mencionaron en una tarea',
+            `Te mencionaron en "${taskForm.value.title}"`,
+            `/project/${projectId}`
+          )
+        }
       }
       
       data.assignees = members.value.filter(m => taskForm.value.assignee_ids.includes(m.user_id))
+      data.labels = labels.value.filter(l => taskForm.value.label_ids.includes(l.id))
       tasks.value.push(data)
     }
   }
@@ -604,6 +872,27 @@ const deleteTask = async () => {
   await supabase.from('tasks').delete().eq('id', editingTask.value.id)
   tasks.value = tasks.value.filter(t => t.id !== editingTask.value.id)
   closeTaskModal()
+}
+
+// Label CRUD
+const saveLabel = async () => {
+  if (!labelForm.value.name.trim()) return
+
+  const { data, error } = await supabase
+    .from('labels')
+    .insert({
+      project_id: projectId,
+      name: labelForm.value.name,
+      color: labelForm.value.color
+    })
+    .select()
+    .single()
+
+  if (!error && data) {
+    labels.value.push(data)
+    showAddLabel.value = false
+    labelForm.value = { name: '', color: '#6366f1' }
+  }
 }
 
 // Column CRUD
@@ -656,7 +945,7 @@ const deleteColumn = async () => {
   
   const tasksInColumn = tasks.value.filter(t => t.status_id === editingColumn.value.id)
   if (tasksInColumn.length > 0) {
-    alert('No puedes eliminar una columna con tareas. Mueve las tareas primero.')
+    alert('No puedes eliminar una columna con tareas.')
     return
   }
 
@@ -677,13 +966,13 @@ const inviteMember = async () => {
     .single()
 
   if (!profile) {
-    inviteError.value = 'Usuario no encontrado. Debe estar registrado en Flowboard.'
+    inviteError.value = 'Usuario no encontrado.'
     return
   }
 
   const existing = members.value.find(m => m.user_id === profile.id)
   if (existing) {
-    inviteError.value = 'Este usuario ya es miembro del workspace.'
+    inviteError.value = 'Ya es miembro del workspace.'
     return
   }
 
@@ -696,18 +985,18 @@ const inviteMember = async () => {
     })
 
   if (error) {
-    inviteError.value = 'Error al invitar: ' + error.message
+    inviteError.value = 'Error: ' + error.message
     return
   }
 
   members.value.push({ user_id: profile.id, email: profile.email, full_name: profile.full_name, role: 'member' })
-  inviteSuccess.value = '¡Usuario invitado exitosamente!'
+  inviteSuccess.value = '¡Invitado!'
   inviteEmail.value = ''
   
   setTimeout(() => {
     showInvite.value = false
     inviteSuccess.value = ''
-  }, 2000)
+  }, 1500)
 }
 
 // Load data
@@ -736,6 +1025,18 @@ const loadStatuses = async () => {
   }
 }
 
+const loadLabels = async () => {
+  const { data } = await supabase
+    .from('labels')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: true })
+
+  if (data) {
+    labels.value = data
+  }
+}
+
 const loadTasks = async () => {
   const { data: tasksData } = await supabase
     .from('tasks')
@@ -743,10 +1044,17 @@ const loadTasks = async () => {
     .eq('project_id', projectId)
     .order('position', { ascending: true })
 
-  if (tasksData) {
+  if (tasksData && tasksData.length > 0) {
+    // Load assignees
     const { data: assigneesData } = await supabase
       .from('task_assignees')
       .select('task_id, user_id, profiles(email, full_name)')
+      .in('task_id', tasksData.map(t => t.id))
+
+    // Load task labels
+    const { data: taskLabelsData } = await supabase
+      .from('task_labels')
+      .select('task_id, label_id, labels(id, name, color)')
       .in('task_id', tasksData.map(t => t.id))
 
     tasks.value = tasksData.map(task => ({
@@ -757,8 +1065,13 @@ const loadTasks = async () => {
           user_id: a.user_id,
           email: (a.profiles as any)?.email,
           full_name: (a.profiles as any)?.full_name
-        })) || []
+        })) || [],
+      labels: taskLabelsData
+        ?.filter(tl => tl.task_id === task.id)
+        .map(tl => (tl.labels as any)) || []
     }))
+  } else {
+    tasks.value = []
   }
 }
 
@@ -781,6 +1094,7 @@ const loadMembers = async (workspaceId: string) => {
 onMounted(async () => {
   await loadProject()
   await loadStatuses()
+  await loadLabels()
   await loadTasks()
 })
 </script>
