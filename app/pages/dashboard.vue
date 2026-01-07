@@ -23,9 +23,9 @@
     >
       <div class="hidden md:flex items-center gap-3 mb-8">
         <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-cyan-600 flex items-center justify-center">
-          <span class="text-neutral-950 font-bold text-sm">F</span>
+          <span class="text-neutral-950 font-bold text-sm">Z</span>
         </div>
-        <span class="font-bold">Flowboard</span>
+        <span class="font-bold">Zboard</span>
       </div>
 
       <nav class="flex-1 space-y-1 overflow-y-auto">
