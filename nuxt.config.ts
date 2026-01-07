@@ -11,7 +11,19 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
 
   supabase: {
-    redirect: false
+    redirect: false,
+    redirectOptions: {
+      login: '/auth/login',
+      callback: '/auth/confirm',
+      include: undefined,
+      exclude: ['/', '/auth/*'],
+      cookieRedirect: false,
+    },
+    cookieOptions: {
+      maxAge: 60 * 60 * 24 * 7, // 7 días
+      sameSite: 'lax',
+      secure: true
+    }
   },
 
   colorMode: {
@@ -27,6 +39,7 @@ export default defineNuxtConfig({
         class: 'dark'
       },
       link: [
+        { rel: 'icon', type: 'image/jpeg', href: '/zaulog.jpg' },
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
         { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap' }

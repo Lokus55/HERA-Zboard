@@ -1,7 +1,13 @@
-export default defineNuxtRouteMiddleware((to) => {
+export default defineNuxtRouteMiddleware(async (to, from) => {
   const user = useSupabaseUser()
+  const supabase = useSupabaseClient()
   
+  // Esperar a que Supabase recupere la sesión del localStorage
   if (!user.value) {
-    return navigateTo('/auth/login')
+    const { data: { session } } = await supabase.auth.getSession()
+    
+    if (!session) {
+      return navigateTo('/auth/login')
+    }
   }
 })

@@ -21,9 +21,9 @@
           Gestiona proyectos
           <span class="text-cyan-400">sin límites</span>
         </h1>
-        <p class="text-xl text-neutral-400 mb-10">
+        <!-- <p class="text-xl text-neutral-400 mb-10">
           La alternativa open-source a Notion y Jira.
-        </p>
+        </p> -->
         <NuxtLink to="/auth/register" class="btn-primary text-lg px-8 py-3">
           Empezar ahora →
         </NuxtLink>
