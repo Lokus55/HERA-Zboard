@@ -47,7 +47,6 @@
       </button>
     </header>
 
-    <!-- Sidebar Overlay (Mobile) -->
     <div
       v-if="sidebarOpen"
       class="fixed inset-0 bg-black/60 z-40 lg:hidden"
@@ -109,13 +108,11 @@
           Volver al Dashboard
         </NuxtLink>
 
-        <!-- Filtro por usuario -->
         <div class="pt-4 pb-2">
           <span class="px-3 text-xs font-medium text-neutral-500 uppercase"
             >Filtrar por usuario</span
           >
         </div>
-
         <button
           @click="
             filterByUser = null;
@@ -145,7 +142,6 @@
             >Equipo</span
           >
         </div>
-
         <button
           v-for="member in members"
           :key="member.user_id"
@@ -153,7 +149,7 @@
             filterByUser = member.user_id;
             sidebarOpen = false;
           "
-          class="sidebar-item w-full text-left group relative"
+          class="sidebar-item w-full text-left"
           :class="{ 'sidebar-item-active': filterByUser === member.user_id }"
         >
           <div
@@ -166,7 +162,6 @@
             member.full_name || member.email?.split("@")[0]
           }}</span>
         </button>
-
         <button
           @click="
             showInvite = true;
@@ -190,13 +185,11 @@
           Invitar miembro
         </button>
 
-        <!-- Filtro por etiqueta -->
         <div class="pt-4 pb-2">
           <span class="px-3 text-xs font-medium text-neutral-500 uppercase"
             >Etiquetas</span
           >
         </div>
-
         <button
           @click="
             filterByLabel = null;
@@ -220,7 +213,6 @@
           </svg>
           Todas
         </button>
-
         <div
           v-for="label in labels"
           :key="label.id"
@@ -259,12 +251,8 @@
             </svg>
           </button>
         </div>
-
         <button
-          @click="
-            showAddLabel = true;
-            sidebarOpen = false;
-          "
+          @click="openNewLabel"
           class="sidebar-item w-full text-left text-cyan-400"
         >
           <svg
@@ -282,12 +270,58 @@
           </svg>
           Nueva etiqueta
         </button>
+
+        <div class="pt-4 pb-2">
+          <span class="px-3 text-xs font-medium text-neutral-500 uppercase"
+            >Documentos</span
+          >
+        </div>
+        <button
+          v-for="doc in documents"
+          :key="doc.id"
+          @click="openViewDocument(doc)"
+          class="sidebar-item w-full text-left group"
+        >
+          <svg
+            class="w-5 h-5 flex-shrink-0 text-neutral-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            />
+          </svg>
+          <span class="truncate flex-1">{{ doc.title }}</span>
+          <span class="text-xs text-neutral-500">@{{ doc.slug }}</span>
+        </button>
+        <button
+          @click="openNewDocument"
+          class="sidebar-item w-full text-left text-cyan-400"
+        >
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+              d="M12 4v16m8-8H4"
+            />
+          </svg>
+          Nuevo documento
+        </button>
       </nav>
     </aside>
 
     <!-- Main -->
     <main class="flex-1 flex flex-col overflow-hidden">
-      <!-- Desktop Header -->
       <header class="hidden lg:block border-b border-neutral-800 p-4">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
@@ -302,13 +336,14 @@
                 {{ project?.name || "Cargando..." }}
               </h1>
               <p class="text-sm text-neutral-400">
-                {{ filteredTasks.length }} tareas
-                <span v-if="filterByUser" class="text-cyan-400">
-                  · {{ getMemberName(filterByUser) }}
-                </span>
-                <span v-if="filterByLabel" class="text-cyan-400">
-                  · {{ getLabelName(filterByLabel) }}
-                </span>
+                {{ filteredTasks.length }} tareas<span
+                  v-if="filterByUser"
+                  class="text-cyan-400"
+                >
+                  · {{ getMemberName(filterByUser) }}</span
+                ><span v-if="filterByLabel" class="text-cyan-400">
+                  · {{ getLabelName(filterByLabel) }}</span
+                >
               </p>
             </div>
           </div>
@@ -323,34 +358,32 @@
         </div>
       </header>
 
-      <!-- Mobile Filter Bar -->
       <div
-        class="lg:hidden border-b border-neutral-800 p-3 flex items-center gap-2 overflow-x-auto"
+        class="lg:hidden border-b border-neutral-800 p-3 flex items-center gap-2"
       >
-        <span class="text-xs text-neutral-500 flex-shrink-0"
+        <span class="text-xs text-neutral-500"
           >{{ filteredTasks.length }} tareas</span
         >
         <div class="flex-1" />
         <button
           @click="showAddColumn = true"
-          class="btn-secondary text-sm py-1.5 px-3 flex-shrink-0"
+          class="btn-secondary text-sm py-1.5 px-3"
         >
           + Columna
         </button>
       </div>
 
-      <!-- Kanban Board -->
       <div class="flex-1 overflow-x-auto p-4 lg:p-6">
         <div
           v-if="statuses.length === 0"
           class="text-neutral-400 text-center py-8"
         >
-          Cargando columnas...
+          Cargando...
         </div>
         <div
           v-else
           class="flex gap-3 lg:gap-4 h-full min-h-[400px]"
-          :style="{ minWidth: `${statuses.length * 280}px` }"
+          :style="{ minWidth: statuses.length * 280 + 'px' }"
         >
           <div
             v-for="column in statuses"
@@ -363,7 +396,7 @@
               <div class="flex items-center justify-between mb-3 px-1">
                 <div class="flex items-center gap-2">
                   <div
-                    class="w-2.5 h-2.5 lg:w-3 lg:h-3 rounded-full"
+                    class="w-3 h-3 rounded-full"
                     :style="{ backgroundColor: column.color }"
                   />
                   <h3 class="font-medium text-sm lg:text-base">
@@ -371,9 +404,8 @@
                   </h3>
                   <span
                     class="text-xs text-neutral-500 bg-neutral-800 px-1.5 py-0.5 rounded"
+                    >{{ getTasksByStatus(column.id).length }}</span
                   >
-                    {{ getTasksByStatus(column.id).length }}
-                  </span>
                 </div>
                 <button
                   v-if="!isDefaultColumn(column.name)"
@@ -395,13 +427,12 @@
                   </svg>
                 </button>
               </div>
-
               <draggable
                 :list="getTasksByStatus(column.id)"
                 group="tasks"
                 item-key="id"
                 class="flex-1 space-y-2 min-h-[100px] overflow-y-auto"
-                @change="(e: any) => onDragChange(e, column.id)"
+                @change="(e) => onDragChange(e, column.id)"
               >
                 <template #item="{ element }">
                   <div
@@ -413,8 +444,6 @@
                     >
                       {{ element.title }}
                     </h4>
-
-                    <!-- Labels -->
                     <div
                       v-if="element.labels?.length"
                       class="flex flex-wrap gap-1 mb-2"
@@ -424,22 +453,23 @@
                         :key="label.id"
                         class="text-[10px] px-1.5 py-0.5 rounded-full text-white"
                         :style="{ backgroundColor: label.color }"
+                        >{{ label.name }}</span
                       >
-                        {{ label.name }}
-                      </span>
                     </div>
-
+                    <p
+                      v-if="element.description"
+                      class="text-xs text-neutral-400 mb-2 line-clamp-2"
+                      v-html="renderDescription(element.description)"
+                      @click.stop="handleDescriptionClick($event)"
+                    />
                     <div class="flex items-center justify-between">
                       <span
                         class="text-xs px-2 py-0.5 rounded-full"
                         :class="priorityClass(element.priority)"
+                        >{{ priorityLabel(element.priority) }}</span
                       >
-                        {{ priorityLabel(element.priority) }}
-                      </span>
-
-                      <!-- Avatares de asignados -->
                       <div
-                        class="flex -space-x-1.5 lg:-space-x-2"
+                        class="flex -space-x-1.5"
                         v-if="element.assignees?.length"
                       >
                         <div
@@ -469,7 +499,6 @@
                   </div>
                 </template>
               </draggable>
-
               <button
                 @click="addTaskToColumn(column.id)"
                 class="w-full mt-2 p-2 text-sm text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800 rounded-lg transition-colors"
@@ -482,16 +511,16 @@
       </div>
     </main>
 
-    <!-- Modal Nueva/Editar Tarea -->
+    <!-- Modal Tarea -->
     <div
       v-if="showTaskModal"
       class="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50"
     >
       <div
-        class="card p-4 sm:p-6 w-full sm:max-w-md max-h-[90vh] sm:max-h-[85vh] overflow-y-auto rounded-t-2xl sm:rounded-xl"
+        class="card p-4 sm:p-6 w-full sm:max-w-md max-h-[90vh] overflow-y-auto rounded-t-2xl sm:rounded-xl"
       >
         <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg sm:text-xl font-bold">
+          <h2 class="text-lg font-bold">
             {{ editingTask ? "Editar tarea" : "Nueva tarea" }}
           </h2>
           <button
@@ -517,8 +546,7 @@
           <div>
             <label class="block text-sm font-medium text-neutral-400 mb-1.5"
               >Título</label
-            >
-            <input
+            ><input
               v-model="taskForm.title"
               type="text"
               class="input"
@@ -526,29 +554,57 @@
               required
             />
           </div>
-
-          <div>
+          <div class="relative">
             <label class="block text-sm font-medium text-neutral-400 mb-1.5"
               >Descripción</label
             >
             <textarea
+              ref="descriptionInput"
               v-model="taskForm.description"
               class="input"
               rows="3"
-              placeholder="Detalles... usa @nombre para mencionar"
-              @input="checkMentions"
+              placeholder="Usa @documento para referencias"
+              @input="onDescriptionInput"
+              @keydown="onDescriptionKeydown"
             ></textarea>
             <p class="text-xs text-neutral-500 mt-1">
-              Usa @nombre para mencionar a alguien
+              Escribe @ para insertar documentos
             </p>
+            <div
+              v-if="showAutocomplete && filteredDocuments.length > 0"
+              class="absolute left-0 right-0 mt-1 bg-neutral-800 border border-neutral-700 rounded-lg overflow-hidden z-10"
+            >
+              <button
+                v-for="(doc, idx) in filteredDocuments"
+                :key="doc.id"
+                type="button"
+                @click="insertDocumentReference(doc)"
+                class="w-full px-3 py-2 text-left text-sm hover:bg-neutral-700 flex items-center gap-2"
+                :class="{ 'bg-neutral-700': idx === autocompleteIndex }"
+              >
+                <svg
+                  class="w-4 h-4 text-neutral-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+                <span>{{ doc.title }}</span
+                ><span class="text-neutral-500 text-xs">@{{ doc.slug }}</span>
+              </button>
+            </div>
           </div>
-
-          <div class="grid grid-cols-2 gap-3 sm:gap-4">
+          <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-sm font-medium text-neutral-400 mb-1.5"
                 >Estado</label
-              >
-              <select v-model="taskForm.status_id" class="input text-sm">
+              ><select v-model="taskForm.status_id" class="input text-sm">
                 <option v-for="col in statuses" :key="col.id" :value="col.id">
                   {{ col.name }}
                 </option>
@@ -557,16 +613,13 @@
             <div>
               <label class="block text-sm font-medium text-neutral-400 mb-1.5"
                 >Prioridad</label
-              >
-              <select v-model="taskForm.priority" class="input text-sm">
+              ><select v-model="taskForm.priority" class="input text-sm">
                 <option value="low">Baja</option>
                 <option value="medium">Media</option>
                 <option value="high">Alta</option>
               </select>
             </div>
           </div>
-
-          <!-- Etiquetas -->
           <div>
             <label class="block text-sm font-medium text-neutral-400 mb-1.5"
               >Etiquetas</label
@@ -581,7 +634,7 @@
                 :class="
                   taskForm.label_ids.includes(label.id)
                     ? 'text-white border-transparent'
-                    : 'text-neutral-400 border-neutral-700 hover:border-neutral-500'
+                    : 'text-neutral-400 border-neutral-700'
                 "
                 :style="
                   taskForm.label_ids.includes(label.id)
@@ -591,21 +644,8 @@
               >
                 {{ label.name }}
               </button>
-              <button
-                @click="
-                  editingLabel = null;
-                  labelForm = { name: '', color: '#6366f1' };
-                  showAddLabel = true;
-                  sidebarOpen = false;
-                "
-                class="sidebar-item w-full text-left text-cyan-400"
-              >
-                + Nueva
-              </button>
             </div>
           </div>
-
-          <!-- Asignados múltiples -->
           <div>
             <label class="block text-sm font-medium text-neutral-400 mb-1.5"
               >Asignar a</label
@@ -615,34 +655,30 @@
                 v-for="member in members"
                 :key="member.user_id"
                 class="flex items-center gap-3 p-2 rounded-lg hover:bg-neutral-800 cursor-pointer"
-              >
-                <input
+                ><input
                   type="checkbox"
                   :value="member.user_id"
                   v-model="taskForm.assignee_ids"
-                  class="w-4 h-4 rounded border-neutral-600 text-cyan-500 focus:ring-cyan-500"
+                  class="w-4 h-4 rounded border-neutral-600 text-cyan-500"
                 />
                 <div
-                  class="w-6 h-6 rounded-full flex items-center justify-center text-xs text-white flex-shrink-0"
+                  class="w-6 h-6 rounded-full flex items-center justify-center text-xs text-white"
                   :style="{ backgroundColor: getAvatarColor(member.user_id) }"
                 >
                   {{ getInitials(member.full_name || member.email) }}
                 </div>
-                <div class="flex-1 min-w-0">
-                  <div class="text-sm truncate">
-                    {{ member.full_name || member.email?.split("@")[0] }}
-                  </div>
-                </div>
-              </label>
+                <span class="text-sm truncate">{{
+                  member.full_name || member.email?.split("@")[0]
+                }}</span></label
+              >
             </div>
           </div>
-
           <div class="flex gap-3 pt-2">
             <button
               v-if="editingTask"
               type="button"
               @click="deleteTask"
-              class="btn-secondary text-red-400 hover:text-red-300 text-sm"
+              class="btn-secondary text-red-400 text-sm"
             >
               Eliminar
             </button>
@@ -652,9 +688,8 @@
               @click="closeTaskModal"
               class="btn-secondary text-sm"
             >
-              Cancelar
-            </button>
-            <button type="submit" class="btn-primary text-sm">
+              Cancelar</button
+            ><button type="submit" class="btn-primary text-sm">
               {{ editingTask ? "Guardar" : "Crear" }}
             </button>
           </div>
@@ -662,7 +697,7 @@
       </div>
     </div>
 
-    <!-- Modal Nueva/Editar Etiqueta -->
+    <!-- Modal Etiqueta -->
     <div
       v-if="showAddLabel"
       class="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50"
@@ -697,12 +732,11 @@
           <div>
             <label class="block text-sm font-medium text-neutral-400 mb-1.5"
               >Nombre</label
-            >
-            <input
+            ><input
               v-model="labelForm.name"
               type="text"
               class="input"
-              placeholder="frontend, bug, urgente..."
+              placeholder="frontend, bug..."
               required
             />
           </div>
@@ -716,7 +750,7 @@
                 :key="color"
                 type="button"
                 @click="labelForm.color = color"
-                class="w-8 h-8 rounded-lg transition-transform hover:scale-110"
+                class="w-8 h-8 rounded-lg hover:scale-110"
                 :class="{ 'ring-2 ring-white': labelForm.color === color }"
                 :style="{ backgroundColor: color }"
               />
@@ -727,7 +761,7 @@
               v-if="editingLabel"
               type="button"
               @click="deleteLabel"
-              class="btn-secondary text-red-400 hover:text-red-300 text-sm"
+              class="btn-secondary text-red-400 text-sm"
             >
               Eliminar
             </button>
@@ -737,9 +771,8 @@
               @click="closeLabelModal"
               class="btn-secondary text-sm"
             >
-              Cancelar
-            </button>
-            <button type="submit" class="btn-primary text-sm">
+              Cancelar</button
+            ><button type="submit" class="btn-primary text-sm">
               {{ editingLabel ? "Guardar" : "Crear" }}
             </button>
           </div>
@@ -747,7 +780,7 @@
       </div>
     </div>
 
-    <!-- Modal Agregar/Editar Columna -->
+    <!-- Modal Columna -->
     <div
       v-if="showAddColumn"
       class="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50"
@@ -756,7 +789,7 @@
         class="card p-4 sm:p-6 w-full sm:max-w-sm rounded-t-2xl sm:rounded-xl"
       >
         <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg sm:text-xl font-bold">
+          <h2 class="text-lg font-bold">
             {{ editingColumn ? "Editar columna" : "Nueva columna" }}
           </h2>
           <button
@@ -782,12 +815,11 @@
           <div>
             <label class="block text-sm font-medium text-neutral-400 mb-1.5"
               >Nombre</label
-            >
-            <input
+            ><input
               v-model="columnForm.name"
               type="text"
               class="input"
-              placeholder="Nombre de la columna"
+              placeholder="Nombre"
               required
             />
           </div>
@@ -801,7 +833,7 @@
                 :key="color"
                 type="button"
                 @click="columnForm.color = color"
-                class="w-8 h-8 rounded-lg transition-transform hover:scale-110 active:scale-95"
+                class="w-8 h-8 rounded-lg hover:scale-110"
                 :class="{ 'ring-2 ring-white': columnForm.color === color }"
                 :style="{ backgroundColor: color }"
               />
@@ -812,7 +844,7 @@
               v-if="editingColumn"
               type="button"
               @click="deleteColumn"
-              class="btn-secondary text-red-400 hover:text-red-300 text-sm"
+              class="btn-secondary text-red-400 text-sm"
             >
               Eliminar
             </button>
@@ -822,9 +854,8 @@
               @click="closeColumnModal"
               class="btn-secondary text-sm"
             >
-              Cancelar
-            </button>
-            <button type="submit" class="btn-primary text-sm">
+              Cancelar</button
+            ><button type="submit" class="btn-primary text-sm">
               {{ editingColumn ? "Guardar" : "Crear" }}
             </button>
           </div>
@@ -841,7 +872,7 @@
         class="card p-4 sm:p-6 w-full sm:max-w-md rounded-t-2xl sm:rounded-xl"
       >
         <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg sm:text-xl font-bold">Invitar al workspace</h2>
+          <h2 class="text-lg font-bold">Invitar al workspace</h2>
           <button
             @click="showInvite = false"
             class="p-2 -mr-2 text-neutral-400 hover:text-white"
@@ -865,8 +896,7 @@
           <div>
             <label class="block text-sm font-medium text-neutral-400 mb-1.5"
               >Email</label
-            >
-            <input
+            ><input
               v-model="inviteEmail"
               type="email"
               class="input"
@@ -875,7 +905,7 @@
             />
           </div>
           <p class="text-sm text-neutral-500">
-            El usuario debe estar registrado en Flowboard.
+            El usuario debe estar registrado.
           </p>
           <div v-if="inviteError" class="text-red-400 text-sm">
             {{ inviteError }}
@@ -889,13 +919,190 @@
               @click="showInvite = false"
               class="btn-secondary flex-1 text-sm"
             >
-              Cancelar
-            </button>
-            <button type="submit" class="btn-primary flex-1 text-sm">
+              Cancelar</button
+            ><button type="submit" class="btn-primary flex-1 text-sm">
               Invitar
             </button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- Modal Documento -->
+    <div
+      v-if="showDocumentModal"
+      class="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50"
+    >
+      <div
+        class="card p-4 sm:p-6 w-full sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-t-2xl sm:rounded-xl"
+      >
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold">
+            {{ editingDocument ? "Editar documento" : "Nuevo documento" }}
+          </h2>
+          <button
+            @click="closeDocumentModal"
+            class="p-2 -mr-2 text-neutral-400 hover:text-white"
+          >
+            <svg
+              class="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.5"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+        <form @submit.prevent="saveDocument" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-neutral-400 mb-1.5"
+              >Título</label
+            ><input
+              v-model="documentForm.title"
+              type="text"
+              class="input"
+              placeholder="Titulo del documento"
+              required
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-neutral-400 mb-1.5"
+              >Slug (para @)</label
+            >
+            <div class="flex items-center gap-2">
+              <span class="text-neutral-500">@</span
+              ><input
+                v-model="documentForm.slug"
+                type="text"
+                class="input flex-1"
+                placeholder="slug-del-documento"
+                @input="sanitizeSlug"
+                required
+              />
+            </div>
+            <p class="text-xs text-neutral-500 mt-1">Sin espacios</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-neutral-400 mb-1.5"
+              >Contenido</label
+            ><textarea
+              v-model="documentForm.content"
+              class="input font-mono text-sm"
+              rows="10"
+              placeholder="Email: user@gmail.com
+Password: 123456"
+            ></textarea>
+          </div>
+          <div class="flex gap-3 pt-2">
+            <button
+              v-if="editingDocument"
+              type="button"
+              @click="deleteDocument"
+              class="btn-secondary text-red-400 text-sm"
+            >
+              Eliminar
+            </button>
+            <div class="flex-1"></div>
+            <button
+              type="button"
+              @click="closeDocumentModal"
+              class="btn-secondary text-sm"
+            >
+              Cancelar</button
+            ><button type="submit" class="btn-primary text-sm">
+              {{ editingDocument ? "Guardar" : "Crear" }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal Ver Documento -->
+    <div
+      v-if="showViewDocument"
+      class="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50"
+    >
+      <div
+        class="card p-4 sm:p-6 w-full sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-t-2xl sm:rounded-xl"
+      >
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-lg font-bold">{{ viewingDocument?.title }}</h2>
+            <p class="text-sm text-neutral-500">@{{ viewingDocument?.slug }}</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+              @click="openEditDocument(viewingDocument)"
+              class="p-2 text-neutral-400 hover:text-white"
+            >
+              <svg
+                class="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                />
+              </svg>
+            </button>
+            <button
+              @click="showViewDocument = false"
+              class="p-2 text-neutral-400 hover:text-white"
+            >
+              <svg
+                class="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div
+          class="bg-neutral-800/50 rounded-lg p-4 font-mono text-sm whitespace-pre-wrap"
+        >
+          {{ viewingDocument?.content }}
+        </div>
+        <div class="flex justify-end gap-2 mt-4">
+          <button
+            @click="copyDocumentContent"
+            class="btn-secondary text-sm flex items-center gap-1"
+          >
+            <svg
+              class="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.5"
+                d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+              /></svg
+            >{{ copied ? "Copiado!" : "Copiar" }}
+          </button>
+          <button @click="showViewDocument = false" class="btn-primary text-sm">
+            Cerrar
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -916,11 +1123,11 @@ const tasks = ref<any[]>([]);
 const statuses = ref<any[]>([]);
 const members = ref<any[]>([]);
 const labels = ref<any[]>([]);
+const documents = ref<any[]>([]);
 const filterByUser = ref<string | null>(null);
 const filterByLabel = ref<string | null>(null);
 const sidebarOpen = ref(false);
 
-// Task Modal
 const showTaskModal = ref(false);
 const editingTask = ref<any>(null);
 const taskForm = ref({
@@ -932,7 +1139,18 @@ const taskForm = ref({
   label_ids: [] as string[],
 });
 
-// Label Modal
+const descriptionInput = ref<HTMLTextAreaElement | null>(null);
+const showAutocomplete = ref(false);
+const autocompleteIndex = ref(0);
+const autocompleteQuery = ref("");
+const filteredDocuments = computed(() => {
+  if (!autocompleteQuery.value) return documents.value;
+  const q = autocompleteQuery.value.toLowerCase();
+  return documents.value.filter(
+    (d) => d.title.toLowerCase().includes(q) || d.slug.toLowerCase().includes(q)
+  );
+});
+
 const showAddLabel = ref(false);
 const editingLabel = ref<any>(null);
 const labelForm = ref({ name: "", color: "#6366f1" });
@@ -947,7 +1165,6 @@ const labelColors = [
   "#78716c",
 ];
 
-// Column Modal
 const showAddColumn = ref(false);
 const editingColumn = ref<any>(null);
 const columnForm = ref({ name: "", color: "#78716c" });
@@ -967,117 +1184,130 @@ const defaultColumns = [
   "Completado",
 ];
 
-// Invite Modal
 const showInvite = ref(false);
 const inviteEmail = ref("");
 const inviteError = ref("");
 const inviteSuccess = ref("");
 
-// Computed
+const showDocumentModal = ref(false);
+const showViewDocument = ref(false);
+const editingDocument = ref<any>(null);
+const viewingDocument = ref<any>(null);
+const documentForm = ref({ title: "", slug: "", content: "" });
+const copied = ref(false);
+
 const filteredTasks = computed(() => {
   let result = tasks.value;
-
-  if (filterByUser.value) {
+  if (filterByUser.value)
     result = result.filter((t) =>
       t.assignees?.some((a: any) => a.user_id === filterByUser.value)
     );
-  }
-
-  if (filterByLabel.value) {
+  if (filterByLabel.value)
     result = result.filter((t) =>
       t.labels?.some((l: any) => l.id === filterByLabel.value)
     );
-  }
-
   return result;
 });
 
-const getTasksByStatus = (statusId: string) => {
-  return filteredTasks.value.filter((t) => t.status_id === statusId);
-};
-
+const getTasksByStatus = (statusId: string) =>
+  filteredTasks.value.filter((t) => t.status_id === statusId);
 const isDefaultColumn = (name: string) => defaultColumns.includes(name);
-
-// Helpers
-const getAvatarColor = (userId: string) => {
-  const colors = [
-    "#ef4444",
-    "#f59e0b",
-    "#10b981",
-    "#06b6d4",
-    "#8b5cf6",
-    "#ec4899",
-    "#6366f1",
+const getAvatarColor = (userId: string) =>
+  ["#ef4444", "#f59e0b", "#10b981", "#06b6d4", "#8b5cf6", "#ec4899", "#6366f1"][
+    userId.charCodeAt(0) % 7
   ];
-  const index = userId.charCodeAt(0) % colors.length;
-  return colors[index];
-};
-
-const getInitials = (name: string) => {
-  if (!name) return "?";
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-};
-
+const getInitials = (name: string) =>
+  name
+    ? name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : "?";
 const getMemberName = (userId: string) => {
-  const member = members.value.find((m) => m.user_id === userId);
-  return member?.full_name || member?.email?.split("@")[0] || "Usuario";
+  const m = members.value.find((m) => m.user_id === userId);
+  return m?.full_name || m?.email?.split("@")[0] || "Usuario";
 };
-
-const getLabelName = (labelId: string) => {
-  const label = labels.value.find((l) => l.id === labelId);
-  return label?.name || "Etiqueta";
-};
-
-const priorityClass = (priority: string) => ({
-  "bg-red-500/20 text-red-400": priority === "high",
-  "bg-amber-500/20 text-amber-400": priority === "medium",
-  "bg-neutral-700 text-neutral-400": priority === "low",
+const getLabelName = (labelId: string) =>
+  labels.value.find((l) => l.id === labelId)?.name || "Etiqueta";
+const priorityClass = (p: string) => ({
+  "bg-red-500/20 text-red-400": p === "high",
+  "bg-amber-500/20 text-amber-400": p === "medium",
+  "bg-neutral-700 text-neutral-400": p === "low",
 });
-
-const priorityLabel = (priority: string) => {
-  const labels: Record<string, string> = {
-    high: "Alta",
-    medium: "Media",
-    low: "Baja",
-  };
-  return labels[priority] || priority;
+const priorityLabel = (p: string) =>
+  ({ high: "Alta", medium: "Media", low: "Baja" }[p] || p);
+const getUserId = (u: any) => u?.id || u?.sub || null;
+const toggleLabel = (id: string) => {
+  const i = taskForm.value.label_ids.indexOf(id);
+  i > -1
+    ? taskForm.value.label_ids.splice(i, 1)
+    : taskForm.value.label_ids.push(id);
 };
 
-const getUserId = (u: any): string | null => {
-  if (!u) return null;
-  return u.id || u.sub || null;
-};
-
-const toggleLabel = (labelId: string) => {
-  const idx = taskForm.value.label_ids.indexOf(labelId);
-  if (idx > -1) {
-    taskForm.value.label_ids.splice(idx, 1);
-  } else {
-    taskForm.value.label_ids.push(labelId);
+const renderDescription = (text: string) =>
+  text
+    ? text.replace(/@(\w+)/g, (m, s) => {
+        const d = documents.value.find(
+          (d) => d.slug.toLowerCase() === s.toLowerCase()
+        );
+        return d
+          ? `<span class="text-cyan-400 cursor-pointer hover:underline" data-doc-slug="${d.slug}">@${d.slug}</span>`
+          : m;
+      })
+    : "";
+const handleDescriptionClick = (e: Event) => {
+  const slug = (e.target as HTMLElement).dataset?.docSlug;
+  if (slug) {
+    const d = documents.value.find(
+      (d) => d.slug.toLowerCase() === slug.toLowerCase()
+    );
+    if (d) openViewDocument(d);
   }
 };
 
-// Check for @mentions in description
-const checkMentions = () => {
-  // This is called on input, we'll process mentions when saving
+const onDescriptionInput = (e: Event) => {
+  const t = e.target as HTMLTextAreaElement,
+    text = t.value.substring(0, t.selectionStart),
+    match = text.match(/@(\w*)$/);
+  if (match) {
+    autocompleteQuery.value = match[1];
+    showAutocomplete.value = true;
+    autocompleteIndex.value = 0;
+  } else showAutocomplete.value = false;
+};
+const onDescriptionKeydown = (e: KeyboardEvent) => {
+  if (!showAutocomplete.value) return;
+  if (e.key === "ArrowDown") {
+    e.preventDefault();
+    autocompleteIndex.value = Math.min(
+      autocompleteIndex.value + 1,
+      filteredDocuments.value.length - 1
+    );
+  } else if (e.key === "ArrowUp") {
+    e.preventDefault();
+    autocompleteIndex.value = Math.max(autocompleteIndex.value - 1, 0);
+  } else if (e.key === "Enter" && filteredDocuments.value.length) {
+    e.preventDefault();
+    insertDocumentReference(filteredDocuments.value[autocompleteIndex.value]);
+  } else if (e.key === "Escape") showAutocomplete.value = false;
+};
+const insertDocumentReference = (doc: any) => {
+  const t = descriptionInput.value;
+  if (!t) return;
+  const before = taskForm.value.description
+      .substring(0, t.selectionStart)
+      .replace(/@\w*$/, `@${doc.slug} `),
+    after = taskForm.value.description.substring(t.selectionStart);
+  taskForm.value.description = before + after;
+  showAutocomplete.value = false;
+  nextTick(() => {
+    t.focus();
+    t.selectionStart = t.selectionEnd = before.length;
+  });
 };
 
-const extractMentions = (text: string): string[] => {
-  const mentionRegex = /@(\w+)/g;
-  const mentions: string[] = [];
-  let match;
-  while ((match = mentionRegex.exec(text)) !== null) {
-    mentions.push(match[1].toLowerCase());
-  }
-  return mentions;
-};
-
-// Create notification
 const createNotification = async (
   userId: string,
   type: string,
@@ -1085,29 +1315,20 @@ const createNotification = async (
   message: string,
   link: string
 ) => {
-  await supabase.from("notifications").insert({
-    user_id: userId,
-    type,
-    title,
-    message,
-    link,
-  });
+  await supabase
+    .from("notifications")
+    .insert({ user_id: userId, type, title, message, link });
 };
-
-// Drag & Drop
-const onDragChange = async (event: any, newStatusId: string) => {
-  if (event.added) {
-    const task = event.added.element;
-    task.status_id = newStatusId;
-
+const onDragChange = async (e: any, statusId: string) => {
+  if (e.added) {
+    e.added.element.status_id = statusId;
     await supabase
       .from("tasks")
-      .update({ status_id: newStatusId, updated_at: new Date().toISOString() })
-      .eq("id", task.id);
+      .update({ status_id: statusId, updated_at: new Date().toISOString() })
+      .eq("id", e.added.element.id);
   }
 };
 
-// Task CRUD
 const openNewTask = () => {
   editingTask.value = null;
   taskForm.value = {
@@ -1120,7 +1341,6 @@ const openNewTask = () => {
   };
   showTaskModal.value = true;
 };
-
 const addTaskToColumn = (statusId: string) => {
   editingTask.value = null;
   taskForm.value = {
@@ -1133,9 +1353,7 @@ const addTaskToColumn = (statusId: string) => {
   };
   showTaskModal.value = true;
 };
-
 const openEditTask = (task: any) => {
-  console.log("Opening task:", task.title, "Labels:", task.labels);
   editingTask.value = task;
   taskForm.value = {
     title: task.title,
@@ -1147,21 +1365,19 @@ const openEditTask = (task: any) => {
   };
   showTaskModal.value = true;
 };
-
 const closeTaskModal = () => {
   showTaskModal.value = false;
   editingTask.value = null;
+  showAutocomplete.value = false;
 };
 
 const saveTask = async () => {
   if (!taskForm.value.title.trim()) return;
-
   const userId = getUserId(user.value);
   const previousAssignees =
     editingTask.value?.assignees?.map((a: any) => a.user_id) || [];
 
   if (editingTask.value) {
-    // Update task
     const { error } = await supabase
       .from("tasks")
       .update({
@@ -1172,72 +1388,46 @@ const saveTask = async () => {
         updated_at: new Date().toISOString(),
       })
       .eq("id", editingTask.value.id);
-
     if (!error) {
-      // Update assignees
       await supabase
         .from("task_assignees")
         .delete()
         .eq("task_id", editingTask.value.id);
       if (taskForm.value.assignee_ids.length > 0) {
-        await supabase.from("task_assignees").insert(
-          taskForm.value.assignee_ids.map((uid) => ({
-            task_id: editingTask.value.id,
-            user_id: uid,
-          }))
-        );
-
-        // Notify newly assigned users
-        const newAssignees = taskForm.value.assignee_ids.filter(
+        await supabase
+          .from("task_assignees")
+          .insert(
+            taskForm.value.assignee_ids.map((uid) => ({
+              task_id: editingTask.value.id,
+              user_id: uid,
+            }))
+          );
+        for (const id of taskForm.value.assignee_ids.filter(
           (id) => !previousAssignees.includes(id)
-        );
-        for (const assigneeId of newAssignees) {
-          if (assigneeId !== userId) {
+        )) {
+          if (id !== userId)
             await createNotification(
-              assigneeId,
+              id,
               "task_assigned",
               "Nueva tarea asignada",
-              `Te han asignado la tarea "${taskForm.value.title}"`,
+              `Te han asignado "${taskForm.value.title}"`,
               `/project/${projectId}`
             );
-          }
         }
       }
-
-      // Update labels
       await supabase
         .from("task_labels")
         .delete()
         .eq("task_id", editingTask.value.id);
-      if (taskForm.value.label_ids.length > 0) {
-        await supabase.from("task_labels").insert(
-          taskForm.value.label_ids.map((lid) => ({
-            task_id: editingTask.value.id,
-            label_id: lid,
-          }))
-        );
-      }
-
-      // Check for @mentions
-      const mentions = extractMentions(taskForm.value.description);
-      for (const mention of mentions) {
-        const mentionedMember = members.value.find(
-          (m) =>
-            m.full_name?.toLowerCase().includes(mention) ||
-            m.email?.split("@")[0].toLowerCase() === mention
-        );
-        if (mentionedMember && mentionedMember.user_id !== userId) {
-          await createNotification(
-            mentionedMember.user_id,
-            "mentioned",
-            "Te mencionaron en una tarea",
-            `Te mencionaron en "${taskForm.value.title}"`,
-            `/project/${projectId}`
+      if (taskForm.value.label_ids.length > 0)
+        await supabase
+          .from("task_labels")
+          .insert(
+            taskForm.value.label_ids.map((lid) => ({
+              task_id: editingTask.value.id,
+              label_id: lid,
+            }))
           );
-        }
-      }
-
-      // Update in memory
       Object.assign(editingTask.value, {
         title: taskForm.value.title,
         description: taskForm.value.description,
@@ -1252,7 +1442,6 @@ const saveTask = async () => {
       });
     }
   } else {
-    // Create task
     const { data, error } = await supabase
       .from("tasks")
       .insert({
@@ -1266,60 +1455,36 @@ const saveTask = async () => {
       })
       .select()
       .single();
-
     if (!error && data) {
-      // Add assignees
       if (taskForm.value.assignee_ids.length > 0) {
-        await supabase.from("task_assignees").insert(
-          taskForm.value.assignee_ids.map((uid) => ({
-            task_id: data.id,
-            user_id: uid,
-          }))
-        );
-
-        // Notify assigned users
-        for (const assigneeId of taskForm.value.assignee_ids) {
-          if (assigneeId !== userId) {
+        await supabase
+          .from("task_assignees")
+          .insert(
+            taskForm.value.assignee_ids.map((uid) => ({
+              task_id: data.id,
+              user_id: uid,
+            }))
+          );
+        for (const id of taskForm.value.assignee_ids) {
+          if (id !== userId)
             await createNotification(
-              assigneeId,
+              id,
               "task_assigned",
               "Nueva tarea asignada",
-              `Te han asignado la tarea "${taskForm.value.title}"`,
+              `Te han asignado "${taskForm.value.title}"`,
               `/project/${projectId}`
             );
-          }
         }
       }
-
-      // Add labels
-      if (taskForm.value.label_ids.length > 0) {
-        await supabase.from("task_labels").insert(
-          taskForm.value.label_ids.map((lid) => ({
-            task_id: data.id,
-            label_id: lid,
-          }))
-        );
-      }
-
-      // Check for @mentions
-      const mentions = extractMentions(taskForm.value.description);
-      for (const mention of mentions) {
-        const mentionedMember = members.value.find(
-          (m) =>
-            m.full_name?.toLowerCase().includes(mention) ||
-            m.email?.split("@")[0].toLowerCase() === mention
-        );
-        if (mentionedMember && mentionedMember.user_id !== userId) {
-          await createNotification(
-            mentionedMember.user_id,
-            "mentioned",
-            "Te mencionaron en una tarea",
-            `Te mencionaron en "${taskForm.value.title}"`,
-            `/project/${projectId}`
+      if (taskForm.value.label_ids.length > 0)
+        await supabase
+          .from("task_labels")
+          .insert(
+            taskForm.value.label_ids.map((lid) => ({
+              task_id: data.id,
+              label_id: lid,
+            }))
           );
-        }
-      }
-
       data.assignees = members.value.filter((m) =>
         taskForm.value.assignee_ids.includes(m.user_id)
       );
@@ -1329,48 +1494,52 @@ const saveTask = async () => {
       tasks.value.push(data);
     }
   }
-
   closeTaskModal();
 };
 
 const deleteTask = async () => {
   if (!editingTask.value) return;
-
   await supabase.from("tasks").delete().eq("id", editingTask.value.id);
   tasks.value = tasks.value.filter((t) => t.id !== editingTask.value.id);
   closeTaskModal();
 };
 
-// Label CRUD
+const openNewLabel = () => {
+  editingLabel.value = null;
+  labelForm.value = { name: "", color: "#6366f1" };
+  showAddLabel.value = true;
+  sidebarOpen.value = false;
+};
+const openEditLabel = (label: any, e: Event) => {
+  e.stopPropagation();
+  editingLabel.value = label;
+  labelForm.value = { name: label.name, color: label.color };
+  showAddLabel.value = true;
+};
+const closeLabelModal = () => {
+  showAddLabel.value = false;
+  editingLabel.value = null;
+  labelForm.value = { name: "", color: "#6366f1" };
+};
+
 const saveLabel = async () => {
   if (!labelForm.value.name.trim()) return;
-
   if (editingLabel.value) {
-    // Actualizar etiqueta existente
     const { error } = await supabase
       .from("labels")
       .update({ name: labelForm.value.name, color: labelForm.value.color })
       .eq("id", editingLabel.value.id);
-
     if (!error) {
-      // Actualizar en la lista local
       Object.assign(editingLabel.value, labelForm.value);
-
-      // Actualizar en las tareas en memoria
-      tasks.value.forEach((task) => {
-        if (task.labels) {
-          const label = task.labels.find(
-            (l: any) => l.id === editingLabel.value.id
-          );
-          if (label) {
-            label.name = labelForm.value.name;
-            label.color = labelForm.value.color;
-          }
+      tasks.value.forEach((t) => {
+        const l = t.labels?.find((l: any) => l.id === editingLabel.value.id);
+        if (l) {
+          l.name = labelForm.value.name;
+          l.color = labelForm.value.color;
         }
       });
     }
   } else {
-    // Crear nueva etiqueta
     const { data, error } = await supabase
       .from("labels")
       .insert({
@@ -1380,81 +1549,36 @@ const saveLabel = async () => {
       })
       .select()
       .single();
-
-    if (!error && data) {
-      labels.value.push(data);
-    }
+    if (!error && data) labels.value.push(data);
   }
-
   closeLabelModal();
 };
 
-const openEditLabel = (label: any, event: Event) => {
-  event.stopPropagation(); // Evitar que se active el filtro
-  editingLabel.value = label;
-  labelForm.value = { name: label.name, color: label.color };
-  showAddLabel.value = true;
-};
-
-const closeLabelModal = () => {
-  showAddLabel.value = false;
-  editingLabel.value = null;
-  labelForm.value = { name: "", color: "#6366f1" };
-};
-
 const deleteLabel = async () => {
-  if (!editingLabel.value) return;
-
-  // Confirmar eliminación
   if (
-    !confirm(
-      `¿Eliminar la etiqueta "${editingLabel.value.name}"? Se quitará de todas las tareas.`
-    )
-  ) {
+    !editingLabel.value ||
+    !confirm(`¿Eliminar "${editingLabel.value.name}"?`)
+  )
     return;
-  }
-
-  // Eliminar relaciones task_labels primero (aunque ON DELETE CASCADE debería hacerlo)
   await supabase
     .from("task_labels")
     .delete()
     .eq("label_id", editingLabel.value.id);
-
-  // Eliminar la etiqueta
-  const { error } = await supabase
-    .from("labels")
-    .delete()
-    .eq("id", editingLabel.value.id);
-
-  if (!error) {
-    // Quitar de la lista local
-    labels.value = labels.value.filter((l) => l.id !== editingLabel.value.id);
-
-    // Quitar de las tareas en memoria
-    tasks.value.forEach((task) => {
-      if (task.labels) {
-        task.labels = task.labels.filter(
-          (l: any) => l.id !== editingLabel.value.id
-        );
-      }
-    });
-
-    // Si estaba filtrando por esta etiqueta, quitar el filtro
-    if (filterByLabel.value === editingLabel.value.id) {
-      filterByLabel.value = null;
-    }
-  }
-
+  await supabase.from("labels").delete().eq("id", editingLabel.value.id);
+  labels.value = labels.value.filter((l) => l.id !== editingLabel.value.id);
+  tasks.value.forEach((t) => {
+    if (t.labels)
+      t.labels = t.labels.filter((l: any) => l.id !== editingLabel.value.id);
+  });
+  if (filterByLabel.value === editingLabel.value.id) filterByLabel.value = null;
   closeLabelModal();
 };
 
-// Column CRUD
-const editColumn = (column: any) => {
-  editingColumn.value = column;
-  columnForm.value = { name: column.name, color: column.color };
+const editColumn = (col: any) => {
+  editingColumn.value = col;
+  columnForm.value = { name: col.name, color: col.color };
   showAddColumn.value = true;
 };
-
 const closeColumnModal = () => {
   showAddColumn.value = false;
   editingColumn.value = null;
@@ -1463,16 +1587,12 @@ const closeColumnModal = () => {
 
 const saveColumn = async () => {
   if (!columnForm.value.name.trim()) return;
-
   if (editingColumn.value) {
     const { error } = await supabase
       .from("task_statuses")
       .update({ name: columnForm.value.name, color: columnForm.value.color })
       .eq("id", editingColumn.value.id);
-
-    if (!error) {
-      Object.assign(editingColumn.value, columnForm.value);
-    }
+    if (!error) Object.assign(editingColumn.value, columnForm.value);
   } else {
     const { data, error } = await supabase
       .from("task_statuses")
@@ -1484,26 +1604,17 @@ const saveColumn = async () => {
       })
       .select()
       .single();
-
-    if (!error && data) {
-      statuses.value.push(data);
-    }
+    if (!error && data) statuses.value.push(data);
   }
-
   closeColumnModal();
 };
 
 const deleteColumn = async () => {
   if (!editingColumn.value) return;
-
-  const tasksInColumn = tasks.value.filter(
-    (t) => t.status_id === editingColumn.value.id
-  );
-  if (tasksInColumn.length > 0) {
-    alert("No puedes eliminar una columna con tareas.");
+  if (tasks.value.some((t) => t.status_id === editingColumn.value.id)) {
+    alert("Columna tiene tareas");
     return;
   }
-
   await supabase
     .from("task_statuses")
     .delete()
@@ -1514,39 +1625,33 @@ const deleteColumn = async () => {
   closeColumnModal();
 };
 
-// Invite
 const inviteMember = async () => {
   inviteError.value = "";
   inviteSuccess.value = "";
-
   const { data: profile } = await supabase
     .from("profiles")
     .select("id, email, full_name")
     .eq("email", inviteEmail.value)
     .single();
-
   if (!profile) {
-    inviteError.value = "Usuario no encontrado.";
+    inviteError.value = "Usuario no encontrado";
     return;
   }
-
-  const existing = members.value.find((m) => m.user_id === profile.id);
-  if (existing) {
-    inviteError.value = "Ya es miembro del workspace.";
+  if (members.value.find((m) => m.user_id === profile.id)) {
+    inviteError.value = "Ya es miembro";
     return;
   }
-
-  const { error } = await supabase.from("workspace_members").insert({
-    workspace_id: project.value.workspace_id,
-    user_id: profile.id,
-    role: "member",
-  });
-
+  const { error } = await supabase
+    .from("workspace_members")
+    .insert({
+      workspace_id: project.value.workspace_id,
+      user_id: profile.id,
+      role: "member",
+    });
   if (error) {
-    inviteError.value = "Error: " + error.message;
+    inviteError.value = error.message;
     return;
   }
-
   members.value.push({
     user_id: profile.id,
     email: profile.email,
@@ -1555,49 +1660,137 @@ const inviteMember = async () => {
   });
   inviteSuccess.value = "¡Invitado!";
   inviteEmail.value = "";
-
   setTimeout(() => {
     showInvite.value = false;
     inviteSuccess.value = "";
   }, 1500);
 };
 
-// Load data
+const openNewDocument = () => {
+  editingDocument.value = null;
+  documentForm.value = { title: "", slug: "", content: "" };
+  showDocumentModal.value = true;
+  sidebarOpen.value = false;
+};
+const openEditDocument = (doc: any) => {
+  editingDocument.value = doc;
+  documentForm.value = {
+    title: doc.title,
+    slug: doc.slug,
+    content: doc.content || "",
+  };
+  showViewDocument.value = false;
+  showDocumentModal.value = true;
+};
+const openViewDocument = (doc: any) => {
+  viewingDocument.value = doc;
+  showViewDocument.value = true;
+  sidebarOpen.value = false;
+};
+const closeDocumentModal = () => {
+  showDocumentModal.value = false;
+  editingDocument.value = null;
+  documentForm.value = { title: "", slug: "", content: "" };
+};
+const sanitizeSlug = () => {
+  documentForm.value.slug = documentForm.value.slug
+    .replace(/[^a-zA-Z0-9_-]/g, "")
+    .substring(0, 50);
+};
+
+const saveDocument = async () => {
+  if (!documentForm.value.title.trim() || !documentForm.value.slug.trim())
+    return;
+  const userId = getUserId(user.value);
+  if (editingDocument.value) {
+    const { error } = await supabase
+      .from("project_documents")
+      .update({
+        title: documentForm.value.title,
+        slug: documentForm.value.slug,
+        content: documentForm.value.content,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", editingDocument.value.id);
+    if (!error) Object.assign(editingDocument.value, documentForm.value);
+  } else {
+    const { data, error } = await supabase
+      .from("project_documents")
+      .insert({
+        project_id: projectId,
+        title: documentForm.value.title,
+        slug: documentForm.value.slug,
+        content: documentForm.value.content,
+        created_by: userId,
+      })
+      .select()
+      .single();
+    if (!error && data) documents.value.push(data);
+  }
+  closeDocumentModal();
+};
+
+const deleteDocument = async () => {
+  if (
+    !editingDocument.value ||
+    !confirm(`¿Eliminar "${editingDocument.value.title}"?`)
+  )
+    return;
+  await supabase
+    .from("project_documents")
+    .delete()
+    .eq("id", editingDocument.value.id);
+  documents.value = documents.value.filter(
+    (d) => d.id !== editingDocument.value.id
+  );
+  closeDocumentModal();
+};
+
+const copyDocumentContent = async () => {
+  if (!viewingDocument.value?.content) return;
+  try {
+    await navigator.clipboard.writeText(viewingDocument.value.content);
+    copied.value = true;
+    setTimeout(() => (copied.value = false), 2000);
+  } catch (e) {
+    console.error(e);
+  }
+};
+
 const loadProject = async () => {
   const { data } = await supabase
     .from("projects")
     .select("*")
     .eq("id", projectId)
     .single();
-
   if (data) {
     project.value = data;
     loadMembers(data.workspace_id);
   }
 };
-
 const loadStatuses = async () => {
   const { data } = await supabase
     .from("task_statuses")
     .select("*")
     .eq("project_id", projectId)
-    .order("position", { ascending: true });
-
-  if (data) {
-    statuses.value = data;
-  }
+    .order("position");
+  if (data) statuses.value = data;
 };
-
 const loadLabels = async () => {
   const { data } = await supabase
     .from("labels")
     .select("*")
     .eq("project_id", projectId)
-    .order("created_at", { ascending: true });
-
-  if (data) {
-    labels.value = data;
-  }
+    .order("created_at");
+  if (data) labels.value = data;
+};
+const loadDocuments = async () => {
+  const { data } = await supabase
+    .from("project_documents")
+    .select("*")
+    .eq("project_id", projectId)
+    .order("created_at");
+  if (data) documents.value = data;
 };
 
 const loadTasks = async () => {
@@ -1605,10 +1798,8 @@ const loadTasks = async () => {
     .from("tasks")
     .select("*")
     .eq("project_id", projectId)
-    .order("position", { ascending: true });
-
-  if (tasksData && tasksData.length > 0) {
-    // Load assignees
+    .order("position");
+  if (tasksData?.length) {
     const { data: assigneesData } = await supabase
       .from("task_assignees")
       .select("task_id, user_id, profiles(email, full_name)")
@@ -1616,8 +1807,6 @@ const loadTasks = async () => {
         "task_id",
         tasksData.map((t) => t.id)
       );
-
-    // Load task labels
     const { data: taskLabelsData } = await supabase
       .from("task_labels")
       .select("task_id, label_id, labels(id, name, color)")
@@ -1625,7 +1814,6 @@ const loadTasks = async () => {
         "task_id",
         tasksData.map((t) => t.id)
       );
-
     tasks.value = tasksData.map((task) => ({
       ...task,
       assignees:
@@ -1641,13 +1829,7 @@ const loadTasks = async () => {
           ?.filter((tl) => tl.task_id === task.id)
           .map((tl) => tl.labels as any) || [],
     }));
-    console.log(
-      "Tasks loaded:",
-      tasks.value.map((t) => ({ title: t.title, labels: t.labels }))
-    );
-  } else {
-    tasks.value = [];
-  }
+  } else tasks.value = [];
 };
 
 const loadMembers = async (workspaceId: string) => {
@@ -1655,21 +1837,20 @@ const loadMembers = async (workspaceId: string) => {
     .from("workspace_members")
     .select("user_id, role, profiles(email, full_name)")
     .eq("workspace_id", workspaceId);
-
-  if (data) {
+  if (data)
     members.value = data.map((m: any) => ({
       user_id: m.user_id,
       role: m.role,
       email: m.profiles?.email,
       full_name: m.profiles?.full_name,
     }));
-  }
 };
 
 onMounted(async () => {
   await loadProject();
   await loadStatuses();
   await loadLabels();
+  await loadDocuments();
   await loadTasks();
 });
 </script>
