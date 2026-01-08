@@ -20,7 +20,7 @@ export default defineNuxtConfig({
       cookieRedirect: false,
     },
     cookieOptions: {
-      maxAge: 60 * 60 * 24 * 7, // 7 días
+      maxAge: 60 * 60 * 24 * 7,
       sameSite: 'lax',
       secure: true
     }
@@ -47,9 +47,9 @@ export default defineNuxtConfig({
     }
   },
 
-  ssr: false, // Importante para SPA en Netlify
+  ssr: false,
   
   nitro: {
-    preset: 'netlify'
+    preset: 'static'
   }
 })
