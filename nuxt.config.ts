@@ -2,11 +2,7 @@ export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   devtools: { enabled: true },
   
-  modules: [
-    '@nuxtjs/tailwindcss',
-    '@nuxtjs/supabase',
-    '@nuxtjs/color-mode'
-  ],
+  modules: ['@nuxtjs/tailwindcss', '@nuxtjs/supabase', '@nuxtjs/color-mode', '@nuxt/icon'],
 
   css: ['~/assets/css/main.css'],
 
@@ -34,7 +30,7 @@ export default defineNuxtConfig({
 
   app: {
     head: {
-      title: 'Flowboard',
+      title: 'Zboard',
       htmlAttrs: {
         class: 'dark'
       },

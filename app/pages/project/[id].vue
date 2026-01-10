@@ -317,6 +317,33 @@
           </svg>
           Nuevo documento
         </button>
+        <div class="pt-4 pb-2">
+          <span class="px-3 text-xs font-medium text-neutral-500 uppercase"
+            >Actividad</span
+          >
+        </div>
+        <button
+          @click="
+            showActivityPanel = true;
+            sidebarOpen = false;
+          "
+          class="sidebar-item w-full text-left"
+        >
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          Ver historial
+        </button>
       </nav>
     </aside>
 
@@ -688,15 +715,20 @@
               @click="closeTaskModal"
               class="btn-secondary text-sm"
             >
-              Cancelar</button
-            ><button type="submit" class="btn-primary text-sm">
+              Cancelar
+            </button>
+            <button type="submit" class="btn-primary text-sm">
               {{ editingTask ? "Guardar" : "Crear" }}
             </button>
           </div>
         </form>
+
+        <!-- Historial de actividad (solo al editar) -->
+        <div v-if="editingTask" class="border-t border-neutral-800 pt-4 mt-4">
+          <TaskTaskactivitylog :task-id="editingTask.id" ref="activityLog" />
+        </div>
       </div>
     </div>
-
     <!-- Modal Etiqueta -->
     <div
       v-if="showAddLabel"
@@ -1105,6 +1137,22 @@ Password: 123456"
         </div>
       </div>
     </div>
+    <!-- Panel de Actividad -->
+    <div
+      v-if="showActivityPanel"
+      class="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50"
+    >
+      <div
+        class="card p-4 sm:p-6 w-full sm:max-w-lg h-[85vh] sm:h-[80vh] rounded-t-2xl sm:rounded-xl flex flex-col"
+      >
+        <TaskProjectActivityPanel
+          :project-id="projectId"
+          :members="members"
+          @close="showActivityPanel = false"
+          @select-task="openTaskFromActivity"
+        />
+      </div>
+    </div>
   </div>
 </template>
 
@@ -1150,6 +1198,8 @@ const filteredDocuments = computed(() => {
     (d) => d.title.toLowerCase().includes(q) || d.slug.toLowerCase().includes(q)
   );
 });
+
+const showActivityPanel = ref(false);
 
 const showAddLabel = ref(false);
 const editingLabel = ref<any>(null);
@@ -1324,7 +1374,10 @@ const onDragChange = async (e: any, statusId: string) => {
     e.added.element.status_id = statusId;
     await supabase
       .from("tasks")
-      .update({ status_id: statusId, updated_at: new Date().toISOString() })
+      .update({
+        status_id: statusId,
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", e.added.element.id);
   }
 };
@@ -1386,6 +1439,7 @@ const saveTask = async () => {
         status_id: taskForm.value.status_id,
         priority: taskForm.value.priority,
         updated_at: new Date().toISOString(),
+        updated_by: userId,
       })
       .eq("id", editingTask.value.id);
     if (!error) {
@@ -1394,14 +1448,12 @@ const saveTask = async () => {
         .delete()
         .eq("task_id", editingTask.value.id);
       if (taskForm.value.assignee_ids.length > 0) {
-        await supabase
-          .from("task_assignees")
-          .insert(
-            taskForm.value.assignee_ids.map((uid) => ({
-              task_id: editingTask.value.id,
-              user_id: uid,
-            }))
-          );
+        await supabase.from("task_assignees").insert(
+          taskForm.value.assignee_ids.map((uid) => ({
+            task_id: editingTask.value.id,
+            user_id: uid,
+          }))
+        );
         for (const id of taskForm.value.assignee_ids.filter(
           (id) => !previousAssignees.includes(id)
         )) {
@@ -1420,14 +1472,12 @@ const saveTask = async () => {
         .delete()
         .eq("task_id", editingTask.value.id);
       if (taskForm.value.label_ids.length > 0)
-        await supabase
-          .from("task_labels")
-          .insert(
-            taskForm.value.label_ids.map((lid) => ({
-              task_id: editingTask.value.id,
-              label_id: lid,
-            }))
-          );
+        await supabase.from("task_labels").insert(
+          taskForm.value.label_ids.map((lid) => ({
+            task_id: editingTask.value.id,
+            label_id: lid,
+          }))
+        );
       Object.assign(editingTask.value, {
         title: taskForm.value.title,
         description: taskForm.value.description,
@@ -1457,14 +1507,12 @@ const saveTask = async () => {
       .single();
     if (!error && data) {
       if (taskForm.value.assignee_ids.length > 0) {
-        await supabase
-          .from("task_assignees")
-          .insert(
-            taskForm.value.assignee_ids.map((uid) => ({
-              task_id: data.id,
-              user_id: uid,
-            }))
-          );
+        await supabase.from("task_assignees").insert(
+          taskForm.value.assignee_ids.map((uid) => ({
+            task_id: data.id,
+            user_id: uid,
+          }))
+        );
         for (const id of taskForm.value.assignee_ids) {
           if (id !== userId)
             await createNotification(
@@ -1477,14 +1525,12 @@ const saveTask = async () => {
         }
       }
       if (taskForm.value.label_ids.length > 0)
-        await supabase
-          .from("task_labels")
-          .insert(
-            taskForm.value.label_ids.map((lid) => ({
-              task_id: data.id,
-              label_id: lid,
-            }))
-          );
+        await supabase.from("task_labels").insert(
+          taskForm.value.label_ids.map((lid) => ({
+            task_id: data.id,
+            label_id: lid,
+          }))
+        );
       data.assignees = members.value.filter((m) =>
         taskForm.value.assignee_ids.includes(m.user_id)
       );
@@ -1641,13 +1687,11 @@ const inviteMember = async () => {
     inviteError.value = "Ya es miembro";
     return;
   }
-  const { error } = await supabase
-    .from("workspace_members")
-    .insert({
-      workspace_id: project.value.workspace_id,
-      user_id: profile.id,
-      role: "member",
-    });
+  const { error } = await supabase.from("workspace_members").insert({
+    workspace_id: project.value.workspace_id,
+    user_id: profile.id,
+    role: "member",
+  });
   if (error) {
     inviteError.value = error.message;
     return;
@@ -1830,6 +1874,14 @@ const loadTasks = async () => {
           .map((tl) => tl.labels as any) || [],
     }));
   } else tasks.value = [];
+};
+
+const openTaskFromActivity = (taskId: string) => {
+  const task = tasks.value.find((t) => t.id === taskId);
+  if (task) {
+    showActivityPanel.value = false;
+    openTask(task);
+  }
 };
 
 const loadMembers = async (workspaceId: string) => {
