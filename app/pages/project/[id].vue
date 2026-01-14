@@ -515,12 +515,6 @@
                             getInitials(assignee.full_name || assignee.email)
                           }}
                         </div>
-                        <div
-                          v-if="element.assignees.length > 3"
-                          class="w-5 h-5 lg:w-6 lg:h-6 rounded-full border-2 border-neutral-900 bg-neutral-700 flex items-center justify-center text-[10px] lg:text-xs"
-                        >
-                          +{{ element.assignees.length - 3 }}
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -1429,8 +1423,13 @@ const saveTask = async () => {
   const userId = getUserId(user.value);
   const previousAssignees =
     editingTask.value?.assignees?.map((a: any) => a.user_id) || [];
+  
+  // Guardar referencia al task que estamos editando
+  const currentTask = editingTask.value;
+  const isEditing = !!currentTask;
+  const taskId = currentTask?.id;
 
-  if (editingTask.value) {
+  if (isEditing && taskId) {
     const { error } = await supabase
       .from("tasks")
       .update({
@@ -1441,19 +1440,23 @@ const saveTask = async () => {
         updated_at: new Date().toISOString(),
         updated_by: userId,
       })
-      .eq("id", editingTask.value.id);
+      .eq("id", taskId);
+      
     if (!error) {
       await supabase
         .from("task_assignees")
         .delete()
-        .eq("task_id", editingTask.value.id);
+        .eq("task_id", taskId);
+        
       if (taskForm.value.assignee_ids.length > 0) {
         await supabase.from("task_assignees").insert(
           taskForm.value.assignee_ids.map((uid) => ({
-            task_id: editingTask.value.id,
+            task_id: taskId,
             user_id: uid,
+            assigned_by: userId,
           }))
         );
+        
         for (const id of taskForm.value.assignee_ids.filter(
           (id) => !previousAssignees.includes(id)
         )) {
@@ -1467,31 +1470,44 @@ const saveTask = async () => {
             );
         }
       }
+      
       await supabase
         .from("task_labels")
         .delete()
-        .eq("task_id", editingTask.value.id);
+        .eq("task_id", taskId);
+        
       if (taskForm.value.label_ids.length > 0)
         await supabase.from("task_labels").insert(
           taskForm.value.label_ids.map((lid) => ({
-            task_id: editingTask.value.id,
+            task_id: taskId,
             label_id: lid,
           }))
         );
-      Object.assign(editingTask.value, {
-        title: taskForm.value.title,
-        description: taskForm.value.description,
-        status_id: taskForm.value.status_id,
-        priority: taskForm.value.priority,
-        assignees: members.value.filter((m) =>
-          taskForm.value.assignee_ids.includes(m.user_id)
-        ),
-        labels: labels.value.filter((l) =>
-          taskForm.value.label_ids.includes(l.id)
-        ),
-      });
+        
+      // Actualizar el task en el array
+      const taskIndex = tasks.value.findIndex((t) => t.id === taskId);
+      if (taskIndex > -1) {
+        tasks.value[taskIndex] = {
+          ...tasks.value[taskIndex],
+          title: taskForm.value.title,
+          description: taskForm.value.description,
+          status_id: taskForm.value.status_id,
+          priority: taskForm.value.priority,
+          assignees: members.value
+            .filter((m) => taskForm.value.assignee_ids.includes(m.user_id))
+            .map((m) => ({
+              user_id: m.user_id,
+              email: m.email,
+              full_name: m.full_name,
+            })),
+          labels: labels.value.filter((l) =>
+            taskForm.value.label_ids.includes(l.id)
+          ),
+        };
+      }
     }
   } else {
+    // Crear nueva tarea (esto ya está bien)
     const { data, error } = await supabase
       .from("tasks")
       .insert({
@@ -1505,12 +1521,14 @@ const saveTask = async () => {
       })
       .select()
       .single();
+      
     if (!error && data) {
       if (taskForm.value.assignee_ids.length > 0) {
         await supabase.from("task_assignees").insert(
           taskForm.value.assignee_ids.map((uid) => ({
             task_id: data.id,
             user_id: uid,
+            assigned_by: userId,
           }))
         );
         for (const id of taskForm.value.assignee_ids) {
@@ -1531,9 +1549,13 @@ const saveTask = async () => {
             label_id: lid,
           }))
         );
-      data.assignees = members.value.filter((m) =>
-        taskForm.value.assignee_ids.includes(m.user_id)
-      );
+      data.assignees = members.value
+        .filter((m) => taskForm.value.assignee_ids.includes(m.user_id))
+        .map((m) => ({
+          user_id: m.user_id,
+          email: m.email,
+          full_name: m.full_name,
+        }));
       data.labels = labels.value.filter((l) =>
         taskForm.value.label_ids.includes(l.id)
       );
@@ -1545,8 +1567,25 @@ const saveTask = async () => {
 
 const deleteTask = async () => {
   if (!editingTask.value) return;
-  await supabase.from("tasks").delete().eq("id", editingTask.value.id);
-  tasks.value = tasks.value.filter((t) => t.id !== editingTask.value.id);
+  if (!confirm(`¿Eliminar "${editingTask.value.title}"?`)) return;
+
+  const taskId = editingTask.value.id;
+
+  // Eliminar registros relacionados primero
+  await supabase.from("task_activities").delete().eq("task_id", taskId);
+  await supabase.from("task_assignees").delete().eq("task_id", taskId);
+  await supabase.from("task_labels").delete().eq("task_id", taskId);
+
+  // Ahora eliminar la tarea
+  const { error } = await supabase.from("tasks").delete().eq("id", taskId);
+
+  if (error) {
+    console.error("Error eliminando tarea:", error);
+    alert("Error al eliminar la tarea");
+    return;
+  }
+
+  tasks.value = tasks.value.filter((t) => t.id !== taskId);
   closeTaskModal();
 };
 
@@ -1584,6 +1623,12 @@ const saveLabel = async () => {
           l.color = labelForm.value.color;
         }
       });
+    }
+    const taskIndex = tasks.value.findIndex(
+      (t) => t.id === editingTask.value.id
+    );
+    if (taskIndex > -1) {
+      tasks.value[taskIndex] = { ...editingTask.value };
     }
   } else {
     const { data, error } = await supabase
@@ -1838,49 +1883,75 @@ const loadDocuments = async () => {
 };
 
 const loadTasks = async () => {
-  const { data: tasksData } = await supabase
+  const { data: tasksData, error: tasksError } = await supabase
     .from("tasks")
     .select("*")
     .eq("project_id", projectId)
     .order("position");
-  if (tasksData?.length) {
-    const { data: assigneesData } = await supabase
-      .from("task_assignees")
-      .select("task_id, user_id, profiles(email, full_name)")
-      .in(
-        "task_id",
-        tasksData.map((t) => t.id)
-      );
-    const { data: taskLabelsData } = await supabase
-      .from("task_labels")
-      .select("task_id, label_id, labels(id, name, color)")
-      .in(
-        "task_id",
-        tasksData.map((t) => t.id)
-      );
-    tasks.value = tasksData.map((task) => ({
+
+  if (tasksError) {
+    console.error("Error loading tasks:", tasksError);
+    return;
+  }
+
+  if (!tasksData || tasksData.length === 0) {
+    tasks.value = [];
+    return;
+  }
+
+  const taskIds = tasksData.map((t) => t.id);
+
+  // Cargar assignees
+  const { data: assigneesData, error: assigneesError } = await supabase
+  .from("task_assignees")
+  .select("task_id, user_id, profiles!task_assignees_user_id_fkey(id, email, full_name)")
+  .in("task_id", taskIds);
+
+  if (assigneesError) {
+    console.error("Error loading assignees:", assigneesError);
+  }
+
+  console.log("Assignees loaded:", assigneesData); // Debug
+
+  // Cargar labels
+  const { data: taskLabelsData, error: labelsError } = await supabase
+    .from("task_labels")
+    .select("task_id, label_id, labels(id, name, color)")
+    .in("task_id", taskIds);
+
+  if (labelsError) {
+    console.error("Error loading labels:", labelsError);
+  }
+
+  // Mapear tasks con sus assignees y labels
+  tasks.value = tasksData.map((task) => {
+    const taskAssignees = assigneesData
+      ?.filter((a) => a.task_id === task.id)
+      .map((a) => ({
+        user_id: a.user_id,
+        email: (a.profiles as any)?.email || null,
+        full_name: (a.profiles as any)?.full_name || null,
+      })) || [];
+
+    const taskLabels = taskLabelsData
+      ?.filter((tl) => tl.task_id === task.id)
+      .map((tl) => tl.labels) || [];
+
+    return {
       ...task,
-      assignees:
-        assigneesData
-          ?.filter((a) => a.task_id === task.id)
-          .map((a) => ({
-            user_id: a.user_id,
-            email: (a.profiles as any)?.email,
-            full_name: (a.profiles as any)?.full_name,
-          })) || [],
-      labels:
-        taskLabelsData
-          ?.filter((tl) => tl.task_id === task.id)
-          .map((tl) => tl.labels as any) || [],
-    }));
-  } else tasks.value = [];
+      assignees: taskAssignees,
+      labels: taskLabels,
+    };
+  });
+
+  console.log("Tasks with assignees:", tasks.value); // Debug
 };
 
 const openTaskFromActivity = (taskId: string) => {
   const task = tasks.value.find((t) => t.id === taskId);
   if (task) {
     showActivityPanel.value = false;
-    openTask(task);
+    openEditTask(task);
   }
 };
 
