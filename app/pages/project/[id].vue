@@ -721,6 +721,13 @@
         <div v-if="editingTask" class="border-t border-neutral-800 pt-4 mt-4">
           <TaskTaskactivitylog :task-id="editingTask.id" ref="activityLog" />
         </div>
+        <TaskGitCommands
+          v-if="editingTask?.task_number"
+          :project-prefix="project?.name || 'TASK'"
+          :task-number="editingTask.task_number"
+          :task-title="editingTask.title"
+          :labels="editingTask.labels"
+        />
       </div>
     </div>
     <!-- Modal Etiqueta -->
@@ -1423,7 +1430,7 @@ const saveTask = async () => {
   const userId = getUserId(user.value);
   const previousAssignees =
     editingTask.value?.assignees?.map((a: any) => a.user_id) || [];
-  
+
   // Guardar referencia al task que estamos editando
   const currentTask = editingTask.value;
   const isEditing = !!currentTask;
@@ -1441,13 +1448,10 @@ const saveTask = async () => {
         updated_by: userId,
       })
       .eq("id", taskId);
-      
+
     if (!error) {
-      await supabase
-        .from("task_assignees")
-        .delete()
-        .eq("task_id", taskId);
-        
+      await supabase.from("task_assignees").delete().eq("task_id", taskId);
+
       if (taskForm.value.assignee_ids.length > 0) {
         await supabase.from("task_assignees").insert(
           taskForm.value.assignee_ids.map((uid) => ({
@@ -1456,7 +1460,7 @@ const saveTask = async () => {
             assigned_by: userId,
           }))
         );
-        
+
         for (const id of taskForm.value.assignee_ids.filter(
           (id) => !previousAssignees.includes(id)
         )) {
@@ -1470,12 +1474,9 @@ const saveTask = async () => {
             );
         }
       }
-      
-      await supabase
-        .from("task_labels")
-        .delete()
-        .eq("task_id", taskId);
-        
+
+      await supabase.from("task_labels").delete().eq("task_id", taskId);
+
       if (taskForm.value.label_ids.length > 0)
         await supabase.from("task_labels").insert(
           taskForm.value.label_ids.map((lid) => ({
@@ -1483,7 +1484,7 @@ const saveTask = async () => {
             label_id: lid,
           }))
         );
-        
+
       // Actualizar el task en el array
       const taskIndex = tasks.value.findIndex((t) => t.id === taskId);
       if (taskIndex > -1) {
@@ -1521,7 +1522,7 @@ const saveTask = async () => {
       })
       .select()
       .single();
-      
+
     if (!error && data) {
       if (taskForm.value.assignee_ids.length > 0) {
         await supabase.from("task_assignees").insert(
@@ -1903,9 +1904,11 @@ const loadTasks = async () => {
 
   // Cargar assignees
   const { data: assigneesData, error: assigneesError } = await supabase
-  .from("task_assignees")
-  .select("task_id, user_id, profiles!task_assignees_user_id_fkey(id, email, full_name)")
-  .in("task_id", taskIds);
+    .from("task_assignees")
+    .select(
+      "task_id, user_id, profiles!task_assignees_user_id_fkey(id, email, full_name)"
+    )
+    .in("task_id", taskIds);
 
   if (assigneesError) {
     console.error("Error loading assignees:", assigneesError);
@@ -1925,17 +1928,19 @@ const loadTasks = async () => {
 
   // Mapear tasks con sus assignees y labels
   tasks.value = tasksData.map((task) => {
-    const taskAssignees = assigneesData
-      ?.filter((a) => a.task_id === task.id)
-      .map((a) => ({
-        user_id: a.user_id,
-        email: (a.profiles as any)?.email || null,
-        full_name: (a.profiles as any)?.full_name || null,
-      })) || [];
+    const taskAssignees =
+      assigneesData
+        ?.filter((a) => a.task_id === task.id)
+        .map((a) => ({
+          user_id: a.user_id,
+          email: (a.profiles as any)?.email || null,
+          full_name: (a.profiles as any)?.full_name || null,
+        })) || [];
 
-    const taskLabels = taskLabelsData
-      ?.filter((tl) => tl.task_id === task.id)
-      .map((tl) => tl.labels) || [];
+    const taskLabels =
+      taskLabelsData
+        ?.filter((tl) => tl.task_id === task.id)
+        .map((tl) => tl.labels) || [];
 
     return {
       ...task,
