@@ -2,11 +2,7 @@ export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   devtools: { enabled: true },
   
-  modules: [
-    '@nuxtjs/tailwindcss',
-    '@nuxtjs/supabase',
-    '@nuxtjs/color-mode'
-  ],
+  modules: ['@nuxtjs/tailwindcss', '@nuxtjs/supabase', '@nuxtjs/color-mode', '@nuxt/icon'],
 
   css: ['~/assets/css/main.css'],
 
@@ -20,7 +16,7 @@ export default defineNuxtConfig({
       cookieRedirect: false,
     },
     cookieOptions: {
-      maxAge: 60 * 60 * 24 * 7, // 7 días
+      maxAge: 60 * 60 * 24 * 7,
       sameSite: 'lax',
       secure: true
     }
@@ -34,7 +30,7 @@ export default defineNuxtConfig({
 
   app: {
     head: {
-      title: 'Flowboard',
+      title: 'Zboard',
       htmlAttrs: {
         class: 'dark'
       },
@@ -47,9 +43,9 @@ export default defineNuxtConfig({
     }
   },
 
-  ssr: false, // Importante para SPA en Netlify
+  ssr: false,
   
   nitro: {
-    preset: 'netlify'
+    preset: 'static'
   }
 })

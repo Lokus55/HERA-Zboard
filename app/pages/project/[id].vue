@@ -317,6 +317,33 @@
           </svg>
           Nuevo documento
         </button>
+        <div class="pt-4 pb-2">
+          <span class="px-3 text-xs font-medium text-neutral-500 uppercase"
+            >Actividad</span
+          >
+        </div>
+        <button
+          @click="
+            showActivityPanel = true;
+            sidebarOpen = false;
+          "
+          class="sidebar-item w-full text-left"
+        >
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          Ver historial
+        </button>
       </nav>
     </aside>
 
@@ -487,12 +514,6 @@
                           {{
                             getInitials(assignee.full_name || assignee.email)
                           }}
-                        </div>
-                        <div
-                          v-if="element.assignees.length > 3"
-                          class="w-5 h-5 lg:w-6 lg:h-6 rounded-full border-2 border-neutral-900 bg-neutral-700 flex items-center justify-center text-[10px] lg:text-xs"
-                        >
-                          +{{ element.assignees.length - 3 }}
                         </div>
                       </div>
                     </div>
@@ -688,15 +709,27 @@
               @click="closeTaskModal"
               class="btn-secondary text-sm"
             >
-              Cancelar</button
-            ><button type="submit" class="btn-primary text-sm">
+              Cancelar
+            </button>
+            <button type="submit" class="btn-primary text-sm">
               {{ editingTask ? "Guardar" : "Crear" }}
             </button>
           </div>
         </form>
+
+        <!-- Historial de actividad (solo al editar) -->
+        <div v-if="editingTask" class="border-t border-neutral-800 pt-4 mt-4">
+          <TaskTaskactivitylog :task-id="editingTask.id" ref="activityLog" />
+        </div>
+        <TaskGitCommands
+          v-if="editingTask?.task_number"
+          :project-prefix="project?.name || 'TASK'"
+          :task-number="editingTask.task_number"
+          :task-title="editingTask.title"
+          :labels="editingTask.labels"
+        />
       </div>
     </div>
-
     <!-- Modal Etiqueta -->
     <div
       v-if="showAddLabel"
@@ -1105,6 +1138,22 @@ Password: 123456"
         </div>
       </div>
     </div>
+    <!-- Panel de Actividad -->
+    <div
+      v-if="showActivityPanel"
+      class="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50"
+    >
+      <div
+        class="card p-4 sm:p-6 w-full sm:max-w-lg h-[85vh] sm:h-[80vh] rounded-t-2xl sm:rounded-xl flex flex-col"
+      >
+        <TaskProjectActivityPanel
+          :project-id="projectId"
+          :members="members"
+          @close="showActivityPanel = false"
+          @select-task="openTaskFromActivity"
+        />
+      </div>
+    </div>
   </div>
 </template>
 
@@ -1150,6 +1199,8 @@ const filteredDocuments = computed(() => {
     (d) => d.title.toLowerCase().includes(q) || d.slug.toLowerCase().includes(q)
   );
 });
+
+const showActivityPanel = ref(false);
 
 const showAddLabel = ref(false);
 const editingLabel = ref<any>(null);
@@ -1324,7 +1375,10 @@ const onDragChange = async (e: any, statusId: string) => {
     e.added.element.status_id = statusId;
     await supabase
       .from("tasks")
-      .update({ status_id: statusId, updated_at: new Date().toISOString() })
+      .update({
+        status_id: statusId,
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", e.added.element.id);
   }
 };
@@ -1377,7 +1431,12 @@ const saveTask = async () => {
   const previousAssignees =
     editingTask.value?.assignees?.map((a: any) => a.user_id) || [];
 
-  if (editingTask.value) {
+  // Guardar referencia al task que estamos editando
+  const currentTask = editingTask.value;
+  const isEditing = !!currentTask;
+  const taskId = currentTask?.id;
+
+  if (isEditing && taskId) {
     const { error } = await supabase
       .from("tasks")
       .update({
@@ -1386,22 +1445,22 @@ const saveTask = async () => {
         status_id: taskForm.value.status_id,
         priority: taskForm.value.priority,
         updated_at: new Date().toISOString(),
+        updated_by: userId,
       })
-      .eq("id", editingTask.value.id);
+      .eq("id", taskId);
+
     if (!error) {
-      await supabase
-        .from("task_assignees")
-        .delete()
-        .eq("task_id", editingTask.value.id);
+      await supabase.from("task_assignees").delete().eq("task_id", taskId);
+
       if (taskForm.value.assignee_ids.length > 0) {
-        await supabase
-          .from("task_assignees")
-          .insert(
-            taskForm.value.assignee_ids.map((uid) => ({
-              task_id: editingTask.value.id,
-              user_id: uid,
-            }))
-          );
+        await supabase.from("task_assignees").insert(
+          taskForm.value.assignee_ids.map((uid) => ({
+            task_id: taskId,
+            user_id: uid,
+            assigned_by: userId,
+          }))
+        );
+
         for (const id of taskForm.value.assignee_ids.filter(
           (id) => !previousAssignees.includes(id)
         )) {
@@ -1415,33 +1474,41 @@ const saveTask = async () => {
             );
         }
       }
-      await supabase
-        .from("task_labels")
-        .delete()
-        .eq("task_id", editingTask.value.id);
+
+      await supabase.from("task_labels").delete().eq("task_id", taskId);
+
       if (taskForm.value.label_ids.length > 0)
-        await supabase
-          .from("task_labels")
-          .insert(
-            taskForm.value.label_ids.map((lid) => ({
-              task_id: editingTask.value.id,
-              label_id: lid,
-            }))
-          );
-      Object.assign(editingTask.value, {
-        title: taskForm.value.title,
-        description: taskForm.value.description,
-        status_id: taskForm.value.status_id,
-        priority: taskForm.value.priority,
-        assignees: members.value.filter((m) =>
-          taskForm.value.assignee_ids.includes(m.user_id)
-        ),
-        labels: labels.value.filter((l) =>
-          taskForm.value.label_ids.includes(l.id)
-        ),
-      });
+        await supabase.from("task_labels").insert(
+          taskForm.value.label_ids.map((lid) => ({
+            task_id: taskId,
+            label_id: lid,
+          }))
+        );
+
+      // Actualizar el task en el array
+      const taskIndex = tasks.value.findIndex((t) => t.id === taskId);
+      if (taskIndex > -1) {
+        tasks.value[taskIndex] = {
+          ...tasks.value[taskIndex],
+          title: taskForm.value.title,
+          description: taskForm.value.description,
+          status_id: taskForm.value.status_id,
+          priority: taskForm.value.priority,
+          assignees: members.value
+            .filter((m) => taskForm.value.assignee_ids.includes(m.user_id))
+            .map((m) => ({
+              user_id: m.user_id,
+              email: m.email,
+              full_name: m.full_name,
+            })),
+          labels: labels.value.filter((l) =>
+            taskForm.value.label_ids.includes(l.id)
+          ),
+        };
+      }
     }
   } else {
+    // Crear nueva tarea (esto ya está bien)
     const { data, error } = await supabase
       .from("tasks")
       .insert({
@@ -1455,16 +1522,16 @@ const saveTask = async () => {
       })
       .select()
       .single();
+
     if (!error && data) {
       if (taskForm.value.assignee_ids.length > 0) {
-        await supabase
-          .from("task_assignees")
-          .insert(
-            taskForm.value.assignee_ids.map((uid) => ({
-              task_id: data.id,
-              user_id: uid,
-            }))
-          );
+        await supabase.from("task_assignees").insert(
+          taskForm.value.assignee_ids.map((uid) => ({
+            task_id: data.id,
+            user_id: uid,
+            assigned_by: userId,
+          }))
+        );
         for (const id of taskForm.value.assignee_ids) {
           if (id !== userId)
             await createNotification(
@@ -1477,17 +1544,19 @@ const saveTask = async () => {
         }
       }
       if (taskForm.value.label_ids.length > 0)
-        await supabase
-          .from("task_labels")
-          .insert(
-            taskForm.value.label_ids.map((lid) => ({
-              task_id: data.id,
-              label_id: lid,
-            }))
-          );
-      data.assignees = members.value.filter((m) =>
-        taskForm.value.assignee_ids.includes(m.user_id)
-      );
+        await supabase.from("task_labels").insert(
+          taskForm.value.label_ids.map((lid) => ({
+            task_id: data.id,
+            label_id: lid,
+          }))
+        );
+      data.assignees = members.value
+        .filter((m) => taskForm.value.assignee_ids.includes(m.user_id))
+        .map((m) => ({
+          user_id: m.user_id,
+          email: m.email,
+          full_name: m.full_name,
+        }));
       data.labels = labels.value.filter((l) =>
         taskForm.value.label_ids.includes(l.id)
       );
@@ -1499,8 +1568,25 @@ const saveTask = async () => {
 
 const deleteTask = async () => {
   if (!editingTask.value) return;
-  await supabase.from("tasks").delete().eq("id", editingTask.value.id);
-  tasks.value = tasks.value.filter((t) => t.id !== editingTask.value.id);
+  if (!confirm(`¿Eliminar "${editingTask.value.title}"?`)) return;
+
+  const taskId = editingTask.value.id;
+
+  // Eliminar registros relacionados primero
+  await supabase.from("task_activities").delete().eq("task_id", taskId);
+  await supabase.from("task_assignees").delete().eq("task_id", taskId);
+  await supabase.from("task_labels").delete().eq("task_id", taskId);
+
+  // Ahora eliminar la tarea
+  const { error } = await supabase.from("tasks").delete().eq("id", taskId);
+
+  if (error) {
+    console.error("Error eliminando tarea:", error);
+    alert("Error al eliminar la tarea");
+    return;
+  }
+
+  tasks.value = tasks.value.filter((t) => t.id !== taskId);
   closeTaskModal();
 };
 
@@ -1538,6 +1624,12 @@ const saveLabel = async () => {
           l.color = labelForm.value.color;
         }
       });
+    }
+    const taskIndex = tasks.value.findIndex(
+      (t) => t.id === editingTask.value.id
+    );
+    if (taskIndex > -1) {
+      tasks.value[taskIndex] = { ...editingTask.value };
     }
   } else {
     const { data, error } = await supabase
@@ -1641,13 +1733,11 @@ const inviteMember = async () => {
     inviteError.value = "Ya es miembro";
     return;
   }
-  const { error } = await supabase
-    .from("workspace_members")
-    .insert({
-      workspace_id: project.value.workspace_id,
-      user_id: profile.id,
-      role: "member",
-    });
+  const { error } = await supabase.from("workspace_members").insert({
+    workspace_id: project.value.workspace_id,
+    user_id: profile.id,
+    role: "member",
+  });
   if (error) {
     inviteError.value = error.message;
     return;
@@ -1794,42 +1884,80 @@ const loadDocuments = async () => {
 };
 
 const loadTasks = async () => {
-  const { data: tasksData } = await supabase
+  const { data: tasksData, error: tasksError } = await supabase
     .from("tasks")
     .select("*")
     .eq("project_id", projectId)
     .order("position");
-  if (tasksData?.length) {
-    const { data: assigneesData } = await supabase
-      .from("task_assignees")
-      .select("task_id, user_id, profiles(email, full_name)")
-      .in(
-        "task_id",
-        tasksData.map((t) => t.id)
-      );
-    const { data: taskLabelsData } = await supabase
-      .from("task_labels")
-      .select("task_id, label_id, labels(id, name, color)")
-      .in(
-        "task_id",
-        tasksData.map((t) => t.id)
-      );
-    tasks.value = tasksData.map((task) => ({
+
+  if (tasksError) {
+    console.error("Error loading tasks:", tasksError);
+    return;
+  }
+
+  if (!tasksData || tasksData.length === 0) {
+    tasks.value = [];
+    return;
+  }
+
+  const taskIds = tasksData.map((t) => t.id);
+
+  // Cargar assignees
+  const { data: assigneesData, error: assigneesError } = await supabase
+    .from("task_assignees")
+    .select(
+      "task_id, user_id, profiles!task_assignees_user_id_fkey(id, email, full_name)"
+    )
+    .in("task_id", taskIds);
+
+  if (assigneesError) {
+    console.error("Error loading assignees:", assigneesError);
+  }
+
+  console.log("Assignees loaded:", assigneesData); // Debug
+
+  // Cargar labels
+  const { data: taskLabelsData, error: labelsError } = await supabase
+    .from("task_labels")
+    .select("task_id, label_id, labels(id, name, color)")
+    .in("task_id", taskIds);
+
+  if (labelsError) {
+    console.error("Error loading labels:", labelsError);
+  }
+
+  // Mapear tasks con sus assignees y labels
+  tasks.value = tasksData.map((task) => {
+    const taskAssignees =
+      assigneesData
+        ?.filter((a) => a.task_id === task.id)
+        .map((a) => ({
+          user_id: a.user_id,
+          email: (a.profiles as any)?.email || null,
+          full_name: (a.profiles as any)?.full_name || null,
+        })) || [];
+
+    const taskLabels =
+      taskLabelsData
+        ?.filter((tl) => tl.task_id === task.id)
+        .map((tl) => tl.labels) || [];
+
+    return {
       ...task,
-      assignees:
-        assigneesData
-          ?.filter((a) => a.task_id === task.id)
-          .map((a) => ({
-            user_id: a.user_id,
-            email: (a.profiles as any)?.email,
-            full_name: (a.profiles as any)?.full_name,
-          })) || [],
-      labels:
-        taskLabelsData
-          ?.filter((tl) => tl.task_id === task.id)
-          .map((tl) => tl.labels as any) || [],
-    }));
-  } else tasks.value = [];
+      assignees: taskAssignees,
+      labels: taskLabels,
+    };
+  });
+
+  console.log("Tasks with assignees:", tasks.value); // Debug
+};
+
+const openTaskFromActivity = (taskId: string) => {
+  const task = tasks.value.find((t) => t.id === taskId);
+  if (task) {
+    showActivityPanel.value = false;
+    openEditTask(task);
+  }
 };
 
 const loadMembers = async (workspaceId: string) => {
