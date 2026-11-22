@@ -37,15 +37,14 @@ const labelsText = computed(() => {
 })
 
 // Comandos de Git
-const branchName = computed(() => `${ticketKey.value}-${slugify(props.taskTitle)}`)
+const branchName = computed(() => [slugify(ticketKey.value), slugify(props.taskTitle)].filter(Boolean).join('-'))
 const gitCheckoutCommand = computed(() => `git checkout -b ${branchName.value}`)
 
-// Commit con etiquetas: "SEUT-1 Quitar numero | bug, fix"
 const gitCommitCommand = computed(() => {
   const base = `${ticketKey.value} ${props.taskTitle}`
-  return labelsText.value 
-    ? `git commit -m "${labelsText.value}: ${base}"`
-    : `git commit -m "${base}"`
+  const message = labelsText.value ? `${labelsText.value}: ${base}` : base
+  const quoted = message.replace(/\r?\n|\r/g, ' ').replace(/'/g, "'\"'\"'")
+  return `git commit -m '${quoted}'`
 })
 
 // Copiar al portapapeles
@@ -203,7 +202,7 @@ const toggleCommit = () => {
           </div>
 
           <p class="text-xs text-neutral-500">
-            Incluye la clave en tus mensajes de commit para vincularlos a esta tarea.
+            Comando para Bash o Git Bash. Incluye la clave de la tarea en el mensaje.
           </p>
         </div>
       </div>

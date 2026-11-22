@@ -7,19 +7,10 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
 
   supabase: {
+    url: process.env.NUXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL,
+    key: process.env.NUXT_PUBLIC_SUPABASE_KEY ?? process.env.SUPABASE_KEY,
     redirect: false,
-    redirectOptions: {
-      login: '/auth/login',
-      callback: '/auth/confirm',
-      include: undefined,
-      exclude: ['/', '/auth/*'],
-      cookieRedirect: false,
-    },
-    cookieOptions: {
-      maxAge: 60 * 60 * 24 * 7,
-      sameSite: 'lax',
-      secure: true
-    }
+    useSsrCookies: false
   },
 
   colorMode: {

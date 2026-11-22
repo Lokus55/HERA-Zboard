@@ -88,16 +88,22 @@ const handleRegister = async () => {
   loading.value = true
 
   try {
-    const { error: authError } = await supabase.auth.signUp({
+    const { data, error: authError } = await supabase.auth.signUp({
       email: email.value,
       password: password.value,
       options: {
-        data: { full_name: fullName.value }
+        data: { full_name: fullName.value },
+        emailRedirectTo: window.location.origin + '/auth/login'
       }
     })
 
     if (authError) {
       error.value = authError.message
+      return
+    }
+
+    if (data.session) {
+      await navigateTo('/dashboard')
       return
     }
 

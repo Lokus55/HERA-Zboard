@@ -113,7 +113,7 @@ const loadActivities = async () => {
     .from('task_activities')
     .select(`
       *,
-      profiles:user_id (full_name, email)
+      profiles!user_id (full_name, email)
     `)
     .eq('task_id', props.taskId)
     .order('created_at', { ascending: false })

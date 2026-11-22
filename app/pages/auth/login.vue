@@ -96,6 +96,11 @@ const loading = ref(false);
 const error = ref("");
 const passwordVisible = ref(false);
 
+onMounted(async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) await navigateTo("/dashboard");
+});
+
 const handleLogin = async () => {
   error.value = "";
   loading.value = true;

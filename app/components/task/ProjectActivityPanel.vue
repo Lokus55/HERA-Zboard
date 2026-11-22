@@ -329,8 +329,8 @@ const loadActivities = async (append = false) => {
     .select(
       `
       *,
-      profiles:user_id (full_name, email),
-      tasks:task_id (title)
+      profiles!user_id (full_name, email),
+      tasks!task_id (title)
     `
     )
     .eq("project_id", props.projectId)
@@ -341,7 +341,7 @@ const loadActivities = async (append = false) => {
     const mapped = data.map((a) => ({
       ...a,
       user_name: a.profiles?.full_name || a.profiles?.email || null,
-      task_title: a.tasks?.title || null,
+      task_title: a.task_title || a.tasks?.title || null,
     }));
 
     if (append) {

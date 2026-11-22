@@ -319,7 +319,7 @@
 
           <div class="flex flex-col-reverse sm:flex-row gap-3 pt-2">
             <button 
-              v-if="workspaces.length > 1 && currentWorkspace?.role === 'owner'" 
+              v-if="currentWorkspace?.role === 'owner'"
               type="button" 
               @click="deleteWorkspace" 
               class="btn-secondary text-red-400 hover:text-red-300"
@@ -382,10 +382,11 @@ const loadWorkspaces = async () => {
     .from('workspace_members')
     .select('workspace_id, role, workspaces(id, name, color, owner_id)')
     .eq('user_id', userId)
-  
-  console.log('Workspaces data:', data) // Para debug
-  console.log('Workspaces error:', error) // Para debug
-  
+  if (error) {
+    alert('No se pudieron cargar los espacios: ' + error.message)
+    return
+  }
+
   if (data && data.length > 0) {
     workspaces.value = data.map((m: any) => ({
       id: m.workspaces?.id,
@@ -405,25 +406,27 @@ const loadWorkspaces = async () => {
       currentWorkspace.value = workspaces.value[0]
       localStorage.setItem('lastWorkspaceId', currentWorkspace.value.id)
     }
-    
-    console.log('Current workspace:', currentWorkspace.value) // Para debug
   }
 }
 
 // Switch workspace
-const switchWorkspace = (workspace: any) => {
-  currentWorkspace.value = workspace
-  localStorage.setItem('lastWorkspaceId', workspace.id)
+const switchWorkspace = async (workspace: any) => {
+  currentWorkspace.value = workspace ?? null
+  projects.value = []
+  workspaceMembers.value = []
+  taskStats.value = { pending: 0, completed: 0 }
+  if (workspace) localStorage.setItem('lastWorkspaceId', workspace.id)
+  else localStorage.removeItem('lastWorkspaceId')
   showWorkspaceDropdown.value = false
   isMobileMenuOpen.value = false
-  loadProjects()
-  loadWorkspaceMembers()
-  loadTaskStats()
+  await Promise.all([loadProjects(), loadWorkspaceMembers()])
+  if (currentWorkspace.value?.id === workspace?.id) await loadTaskStats()
 }
 
 // Load projects for current workspace
 const loadProjects = async () => {
-  if (!currentWorkspace.value) {
+  const workspaceId = currentWorkspace.value?.id
+  if (!workspaceId) {
     loading.value = false
     return
   }
@@ -433,9 +436,10 @@ const loadProjects = async () => {
   const { data } = await supabase
     .from('projects')
     .select('*')
-    .eq('workspace_id', currentWorkspace.value.id)
+    .eq('workspace_id', workspaceId)
     .order('created_at', { ascending: false })
-  
+
+  if (currentWorkspace.value?.id !== workspaceId) return
   if (data) {
     projects.value = data
   }
@@ -445,14 +449,15 @@ const loadProjects = async () => {
 
 // Load workspace members
 const loadWorkspaceMembers = async () => {
-  if (!currentWorkspace.value) return
+  const workspaceId = currentWorkspace.value?.id
+  if (!workspaceId) return
 
   const { data } = await supabase
     .from('workspace_members')
     .select('user_id, role, profiles(email, full_name)')
-    .eq('workspace_id', currentWorkspace.value.id)
+    .eq('workspace_id', workspaceId)
 
-  if (data) {
+  if (data && currentWorkspace.value?.id === workspaceId) {
     workspaceMembers.value = data.map((m: any) => ({
       user_id: m.user_id,
       role: m.role,
@@ -464,6 +469,7 @@ const loadWorkspaceMembers = async () => {
 
 // Load task stats
 const loadTaskStats = async () => {
+  const workspaceId = currentWorkspace.value?.id
   if (projects.value.length === 0) {
     taskStats.value = { pending: 0, completed: 0 }
     return
@@ -485,7 +491,7 @@ const loadTaskStats = async () => {
     .select('id, status_id')
     .in('project_id', projectIds)
   
-  if (tasks) {
+  if (tasks && currentWorkspace.value?.id === workspaceId) {
     taskStats.value = {
       completed: tasks.filter(t => completedStatusIds.includes(t.status_id)).length,
       pending: tasks.filter(t => !completedStatusIds.includes(t.status_id)).length
@@ -522,16 +528,12 @@ const createWorkspace = async () => {
     .single()
 
   if (!error && workspace) {
-    await supabase.from('workspace_members').insert({
-      workspace_id: workspace.id,
-      user_id: userId,
-      role: 'owner'
-    })
-
     const newWs = { ...workspace, role: 'owner' }
     workspaces.value.push(newWs)
     switchWorkspace(newWs)
     showNewWorkspace.value = false
+  } else if (error) {
+    alert('No se pudo crear el espacio: ' + error.message)
   }
 }
 
@@ -606,9 +608,6 @@ const createProject = async () => {
   }
   
   if (project) {
-    // ELIMINA ESTE BLOQUE - Ya no crear columnas manualmente
-    // const defaultStatuses = [...]
-    // await supabase.from('task_statuses').insert(...)
 
     projects.value.unshift(project)
     showNewProject.value = false

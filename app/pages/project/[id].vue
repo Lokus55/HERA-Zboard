@@ -163,6 +163,7 @@
           }}</span>
         </button>
         <button
+          v-if="members.some((member) => member.user_id === getUserId(user) && member.role === 'owner')"
           @click="
             showInvite = true;
             sidebarOpen = false;
@@ -182,7 +183,7 @@
               d="M12 4v16m8-8H4"
             />
           </svg>
-          Invitar miembro
+          Agregar miembro
         </button>
 
         <div class="pt-4 pb-2">
@@ -486,9 +487,17 @@
                     <p
                       v-if="element.description"
                       class="text-xs text-neutral-400 mb-2 line-clamp-2"
-                      v-html="renderDescription(element.description)"
-                      @click.stop="handleDescriptionClick($event)"
-                    />
+                    >
+                      <template v-for="(part, index) in descriptionParts(element.description)" :key="index">
+                        <button
+                          v-if="part.document"
+                          type="button"
+                          class="text-cyan-400 hover:underline"
+                          @click.stop="openViewDocument(part.document)"
+                        >{{ part.text }}</button>
+                        <span v-else>{{ part.text }}</span>
+                      </template>
+                    </p>
                     <div class="flex items-center justify-between">
                       <span
                         class="text-xs px-2 py-0.5 rounded-full"
@@ -905,7 +914,7 @@
         class="card p-4 sm:p-6 w-full sm:max-w-md rounded-t-2xl sm:rounded-xl"
       >
         <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-bold">Invitar al workspace</h2>
+          <h2 class="text-lg font-bold">Agregar miembro al espacio</h2>
           <button
             @click="showInvite = false"
             class="p-2 -mr-2 text-neutral-400 hover:text-white"
@@ -954,7 +963,7 @@
             >
               Cancelar</button
             ><button type="submit" class="btn-primary flex-1 text-sm">
-              Invitar
+              Agregar
             </button>
           </div>
         </form>
@@ -1297,26 +1306,13 @@ const toggleLabel = (id: string) => {
     : taskForm.value.label_ids.push(id);
 };
 
-const renderDescription = (text: string) =>
-  text
-    ? text.replace(/@(\w+)/g, (m, s) => {
-        const d = documents.value.find(
-          (d) => d.slug.toLowerCase() === s.toLowerCase()
-        );
-        return d
-          ? `<span class="text-cyan-400 cursor-pointer hover:underline" data-doc-slug="${d.slug}">@${d.slug}</span>`
-          : m;
-      })
-    : "";
-const handleDescriptionClick = (e: Event) => {
-  const slug = (e.target as HTMLElement).dataset?.docSlug;
-  if (slug) {
-    const d = documents.value.find(
-      (d) => d.slug.toLowerCase() === slug.toLowerCase()
-    );
-    if (d) openViewDocument(d);
-  }
-};
+const descriptionParts = (description: string) =>
+  description.split(/(@[\w-]+)/g).map((text, index) => ({
+    text,
+    document: index % 2 === 1
+      ? documents.value.find((doc) => doc.slug.toLowerCase() === text.slice(1).toLowerCase())
+      : undefined,
+  }));
 
 const onDescriptionInput = (e: Event) => {
   const t = e.target as HTMLTextAreaElement,
@@ -1349,7 +1345,7 @@ const insertDocumentReference = (doc: any) => {
   if (!t) return;
   const before = taskForm.value.description
       .substring(0, t.selectionStart)
-      .replace(/@\w*$/, `@${doc.slug} `),
+      .replace(/@[\w-]*$/, `@${doc.slug} `),
     after = taskForm.value.description.substring(t.selectionStart);
   taskForm.value.description = before + after;
   showAutocomplete.value = false;
@@ -1359,28 +1355,14 @@ const insertDocumentReference = (doc: any) => {
   });
 };
 
-const createNotification = async (
-  userId: string,
-  type: string,
-  title: string,
-  message: string,
-  link: string
-) => {
-  await supabase
-    .from("notifications")
-    .insert({ user_id: userId, type, title, message, link });
-};
 const onDragChange = async (e: any, statusId: string) => {
-  if (e.added) {
-    e.added.element.status_id = statusId;
-    await supabase
-      .from("tasks")
-      .update({
-        status_id: statusId,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", e.added.element.id);
+  if (!e.added) return;
+  const { data, error } = await supabase.from("tasks")
+    .update({ status_id: statusId }).eq("id", e.added.element.id).select("id").single();
+  if (error || !data) {
+    alert("No se pudo mover la tarea");
   }
+  await loadTasks();
 };
 
 const openNewTask = () => {
@@ -1425,145 +1407,32 @@ const closeTaskModal = () => {
   showAutocomplete.value = false;
 };
 
+const savingTask = ref(false);
+
 const saveTask = async () => {
-  if (!taskForm.value.title.trim()) return;
-  const userId = getUserId(user.value);
-  const previousAssignees =
-    editingTask.value?.assignees?.map((a: any) => a.user_id) || [];
-
-  // Guardar referencia al task que estamos editando
-  const currentTask = editingTask.value;
-  const isEditing = !!currentTask;
-  const taskId = currentTask?.id;
-
-  if (isEditing && taskId) {
-    const { error } = await supabase
-      .from("tasks")
-      .update({
-        title: taskForm.value.title,
-        description: taskForm.value.description,
-        status_id: taskForm.value.status_id,
-        priority: taskForm.value.priority,
-        updated_at: new Date().toISOString(),
-        updated_by: userId,
-      })
-      .eq("id", taskId);
-
-    if (!error) {
-      await supabase.from("task_assignees").delete().eq("task_id", taskId);
-
-      if (taskForm.value.assignee_ids.length > 0) {
-        await supabase.from("task_assignees").insert(
-          taskForm.value.assignee_ids.map((uid) => ({
-            task_id: taskId,
-            user_id: uid,
-            assigned_by: userId,
-          }))
-        );
-
-        for (const id of taskForm.value.assignee_ids.filter(
-          (id) => !previousAssignees.includes(id)
-        )) {
-          if (id !== userId)
-            await createNotification(
-              id,
-              "task_assigned",
-              "Nueva tarea asignada",
-              `Te han asignado "${taskForm.value.title}"`,
-              `/project/${projectId}`
-            );
-        }
-      }
-
-      await supabase.from("task_labels").delete().eq("task_id", taskId);
-
-      if (taskForm.value.label_ids.length > 0)
-        await supabase.from("task_labels").insert(
-          taskForm.value.label_ids.map((lid) => ({
-            task_id: taskId,
-            label_id: lid,
-          }))
-        );
-
-      // Actualizar el task en el array
-      const taskIndex = tasks.value.findIndex((t) => t.id === taskId);
-      if (taskIndex > -1) {
-        tasks.value[taskIndex] = {
-          ...tasks.value[taskIndex],
-          title: taskForm.value.title,
-          description: taskForm.value.description,
-          status_id: taskForm.value.status_id,
-          priority: taskForm.value.priority,
-          assignees: members.value
-            .filter((m) => taskForm.value.assignee_ids.includes(m.user_id))
-            .map((m) => ({
-              user_id: m.user_id,
-              email: m.email,
-              full_name: m.full_name,
-            })),
-          labels: labels.value.filter((l) =>
-            taskForm.value.label_ids.includes(l.id)
-          ),
-        };
-      }
+  if (savingTask.value || !taskForm.value.title.trim() || !taskForm.value.status_id) return;
+  savingTask.value = true;
+  try {
+    const form = taskForm.value;
+    const { error } = await supabase.rpc("save_board_task", {
+      board: projectId,
+      task: editingTask.value?.id ?? null,
+      task_title: form.title,
+      task_description: form.description,
+      task_status: form.status_id,
+      task_priority: form.priority,
+      assignees: form.assignee_ids,
+      task_label_ids: form.label_ids,
+    });
+    if (error) {
+      alert("No se pudo guardar la tarea: " + error.message);
+      return;
     }
-  } else {
-    // Crear nueva tarea (esto ya está bien)
-    const { data, error } = await supabase
-      .from("tasks")
-      .insert({
-        project_id: projectId,
-        title: taskForm.value.title,
-        description: taskForm.value.description,
-        status_id: taskForm.value.status_id,
-        priority: taskForm.value.priority,
-        created_by: userId,
-        position: tasks.value.length,
-      })
-      .select()
-      .single();
-
-    if (!error && data) {
-      if (taskForm.value.assignee_ids.length > 0) {
-        await supabase.from("task_assignees").insert(
-          taskForm.value.assignee_ids.map((uid) => ({
-            task_id: data.id,
-            user_id: uid,
-            assigned_by: userId,
-          }))
-        );
-        for (const id of taskForm.value.assignee_ids) {
-          if (id !== userId)
-            await createNotification(
-              id,
-              "task_assigned",
-              "Nueva tarea asignada",
-              `Te han asignado "${taskForm.value.title}"`,
-              `/project/${projectId}`
-            );
-        }
-      }
-      if (taskForm.value.label_ids.length > 0)
-        await supabase.from("task_labels").insert(
-          taskForm.value.label_ids.map((lid) => ({
-            task_id: data.id,
-            label_id: lid,
-          }))
-        );
-      data.assignees = members.value
-        .filter((m) => taskForm.value.assignee_ids.includes(m.user_id))
-        .map((m) => ({
-          user_id: m.user_id,
-          email: m.email,
-          full_name: m.full_name,
-        }));
-      data.labels = labels.value.filter((l) =>
-        taskForm.value.label_ids.includes(l.id)
-      );
-      tasks.value.push(data);
-    }
+    closeTaskModal();
+    await loadTasks();
+  } finally {
+    savingTask.value = false;
   }
-  closeTaskModal();
 };
 
 const deleteTask = async () => {
@@ -1573,9 +1442,6 @@ const deleteTask = async () => {
   const taskId = editingTask.value.id;
 
   // Eliminar registros relacionados primero
-  await supabase.from("task_activities").delete().eq("task_id", taskId);
-  await supabase.from("task_assignees").delete().eq("task_id", taskId);
-  await supabase.from("task_labels").delete().eq("task_id", taskId);
 
   // Ahora eliminar la tarea
   const { error } = await supabase.from("tasks").delete().eq("id", taskId);
@@ -1652,11 +1518,11 @@ const deleteLabel = async () => {
     !confirm(`¿Eliminar "${editingLabel.value.name}"?`)
   )
     return;
-  await supabase
-    .from("task_labels")
-    .delete()
-    .eq("label_id", editingLabel.value.id);
-  await supabase.from("labels").delete().eq("id", editingLabel.value.id);
+  const { error } = await supabase.from("labels").delete().eq("id", editingLabel.value.id);
+  if (error) {
+    alert("No se pudo eliminar la etiqueta: " + error.message);
+    return;
+  }
   labels.value = labels.value.filter((l) => l.id !== editingLabel.value.id);
   tasks.value.forEach((t) => {
     if (t.labels)
@@ -1707,10 +1573,11 @@ const deleteColumn = async () => {
     alert("Columna tiene tareas");
     return;
   }
-  await supabase
-    .from("task_statuses")
-    .delete()
-    .eq("id", editingColumn.value.id);
+  const { error } = await supabase.from("task_statuses").delete().eq("id", editingColumn.value.id);
+  if (error) {
+    alert("No se pudo eliminar la columna: " + error.message);
+    return;
+  }
   statuses.value = statuses.value.filter(
     (s) => s.id !== editingColumn.value.id
   );
@@ -1720,35 +1587,16 @@ const deleteColumn = async () => {
 const inviteMember = async () => {
   inviteError.value = "";
   inviteSuccess.value = "";
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id, email, full_name")
-    .eq("email", inviteEmail.value)
-    .single();
-  if (!profile) {
-    inviteError.value = "Usuario no encontrado";
-    return;
-  }
-  if (members.value.find((m) => m.user_id === profile.id)) {
-    inviteError.value = "Ya es miembro";
-    return;
-  }
-  const { error } = await supabase.from("workspace_members").insert({
-    workspace_id: project.value.workspace_id,
-    user_id: profile.id,
-    role: "member",
+  const { error } = await supabase.rpc("add_workspace_member", {
+    workspace: project.value.workspace_id,
+    member_email: inviteEmail.value,
   });
   if (error) {
     inviteError.value = error.message;
     return;
   }
-  members.value.push({
-    user_id: profile.id,
-    email: profile.email,
-    full_name: profile.full_name,
-    role: "member",
-  });
-  inviteSuccess.value = "¡Invitado!";
+  await loadMembers(project.value.workspace_id);
+  inviteSuccess.value = "¡Miembro agregado!";
   inviteEmail.value = "";
   setTimeout(() => {
     showInvite.value = false;
@@ -1914,8 +1762,6 @@ const loadTasks = async () => {
     console.error("Error loading assignees:", assigneesError);
   }
 
-  console.log("Assignees loaded:", assigneesData); // Debug
-
   // Cargar labels
   const { data: taskLabelsData, error: labelsError } = await supabase
     .from("task_labels")
@@ -1949,7 +1795,6 @@ const loadTasks = async () => {
     };
   });
 
-  console.log("Tasks with assignees:", tasks.value); // Debug
 };
 
 const openTaskFromActivity = (taskId: string) => {
