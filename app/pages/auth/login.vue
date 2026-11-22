@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen flex items-center justify-center p-4">
     <div class="w-full max-w-md">
-      <div class="text-center mb-8">
+      <div class="flex items-center justify-between gap-3 mb-8">
         <NuxtLink to="/" class="inline-flex items-center gap-3">
           <div
             class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-cyan-600 flex items-center justify-center"
@@ -10,23 +10,24 @@
           </div>
           <span class="font-bold text-2xl">Zboard</span>
         </NuxtLink>
+        <AppLanguagePicker />
       </div>
 
       <div class="card p-8">
-        <h1 class="text-2xl font-bold mb-2 text-center">Bienvenido de nuevo</h1>
+        <h1 class="text-2xl font-bold mb-2 text-center">{{ t('welcomeBack') }}</h1>
         <p class="text-neutral-400 text-center mb-8">
-          Inicia sesión para continuar
+          {{ t('signInToContinue') }}
         </p>
 
         <form @submit.prevent="handleLogin" class="space-y-5">
           <div>
             <label class="block text-sm font-medium text-neutral-400 mb-1.5"
-              >Email</label
+              >{{ t('email') }}</label
             >
             <input
               v-model="email"
               type="email"
-              placeholder="tu@email.com"
+              :placeholder="t('emailPlaceholder')"
               required
               class="input"
             />
@@ -34,7 +35,7 @@
 
           <div class="block">
             <label class="block text-sm font-medium text-neutral-400 mb-1.5">
-              Contraseña
+              {{ t('password') }}
             </label>
 
             <div class="relative">
@@ -49,7 +50,7 @@
                 type="button"
                 @click="passwordVisible = !passwordVisible"
                 :aria-label="
-                  passwordVisible ? 'Ocultar contraseña' : 'Mostrar contraseña'
+                  passwordVisible ? t('hidePassword') : t('showPassword')
                 "
                 class="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-700 focus:outline-none"
               >
@@ -65,21 +66,21 @@
             v-if="error"
             class="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm"
           >
-            {{ error }}
+            {{ t(error) }}
           </div>
 
           <button type="submit" class="btn-primary w-full" :disabled="loading">
-            {{ loading ? "Cargando..." : "Iniciar sesión" }}
+            {{ loading ? t('loading') : t('signIn') }}
           </button>
         </form>
 
         <p class="mt-6 text-center text-sm text-neutral-400">
-          ¿No tienes cuenta?
+          {{ t('noAccount') }}
           <NuxtLink
             to="/auth/register"
             class="text-cyan-400 hover:text-cyan-300"
           >
-            Regístrate gratis
+            {{ t('signUp') }}
           </NuxtLink>
         </p>
       </div>
@@ -88,21 +89,24 @@
 </template>
 
 <script setup lang="ts">
+import type { MessageKey } from '~/utils/interfaceMessages'
+
+const { t } = useInterfaceLanguage()
 const supabase = useSupabaseClient();
 
 const email = ref("");
 const password = ref("");
 const loading = ref(false);
-const error = ref("");
+const error = ref<MessageKey | null>(null);
 const passwordVisible = ref(false);
 
 onMounted(async () => {
   const { data: { session } } = await supabase.auth.getSession();
-  if (session) await navigateTo("/dashboard");
+  if (session) await navigateTo(getPendingInvitation() ? "/invite" : "/dashboard");
 });
 
 const handleLogin = async () => {
-  error.value = "";
+  error.value = null;
   loading.value = true;
 
   try {
@@ -112,13 +116,13 @@ const handleLogin = async () => {
     });
 
     if (authError) {
-      error.value = "Email o contraseña incorrectos";
+      error.value = authError.code === 'invalid_credentials' ? 'invalidCredentials' : 'unexpectedError';
       return;
     }
 
-    navigateTo("/dashboard");
-  } catch (e) {
-    error.value = "Ha ocurrido un error";
+    await navigateTo(getPendingInvitation() ? "/invite" : "/dashboard");
+  } catch {
+    error.value = 'unexpectedError';
   } finally {
     loading.value = false;
   }

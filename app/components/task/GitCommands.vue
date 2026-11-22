@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const { t } = useInterfaceLanguage()
 interface Label {
   id: string
   name: string
@@ -81,7 +82,7 @@ const toggleCommit = () => {
       <svg class="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
       </svg>
-      <span class="text-sm font-medium text-neutral-400">Desarrollo</span>
+      <span class="text-sm font-medium text-neutral-400">{{ t('development') }}</span>
       <span class="text-xs bg-neutral-800 text-neutral-300 px-2 py-0.5 rounded font-mono">
         {{ ticketKey }}
       </span>
@@ -99,7 +100,7 @@ const toggleCommit = () => {
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
             </svg>
-            <span>Crear rama</span>
+            <span>{{ t('createBranch') }}</span>
           </div>
           <svg 
             class="w-4 h-4 transition-transform" 
@@ -113,7 +114,7 @@ const toggleCommit = () => {
         </button>
 
         <div v-if="showBranchDropdown" class="mt-2 p-3 bg-neutral-800/50 rounded-lg border border-neutral-700">
-          <p class="text-xs text-neutral-400 mb-2 uppercase tracking-wide">Git checkout de nueva rama</p>
+          <p class="text-xs text-neutral-400 mb-2 uppercase tracking-wide">{{ t('branchCommand') }}</p>
           <div class="flex items-center gap-2">
             <code class="flex-1 text-xs bg-neutral-900 text-neutral-200 p-2 rounded font-mono overflow-x-auto">
               {{ gitCheckoutCommand }}
@@ -121,7 +122,7 @@ const toggleCommit = () => {
             <button
               @click="copyToClipboard(gitCheckoutCommand, 'branch')"
               class="p-2 text-neutral-400 hover:text-white hover:bg-neutral-700 rounded transition-colors flex-shrink-0"
-              :title="copied === 'branch' ? '¡Copiado!' : 'Copiar'"
+              :title="copied === 'branch' ? t('copied') : t('copy')"
             >
               <svg v-if="copied !== 'branch'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -145,7 +146,7 @@ const toggleCommit = () => {
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <span>Crear confirmación</span>
+            <span>{{ t('createCommit') }}</span>
           </div>
           <svg 
             class="w-4 h-4 transition-transform" 
@@ -160,7 +161,7 @@ const toggleCommit = () => {
 
         <div v-if="showCommitDropdown" class="mt-2 p-3 bg-neutral-800/50 rounded-lg border border-neutral-700 space-y-3">
           <div>
-            <p class="text-xs text-neutral-400 mb-2 uppercase tracking-wide">Copiar clave</p>
+            <p class="text-xs text-neutral-400 mb-2 uppercase tracking-wide">{{ t('copyKey') }}</p>
             <div class="flex items-center gap-2">
               <code class="flex-1 text-xs bg-neutral-900 text-neutral-200 p-2 rounded font-mono">
                 {{ ticketKey }}
@@ -168,7 +169,7 @@ const toggleCommit = () => {
               <button
                 @click="copyToClipboard(ticketKey, 'key')"
                 class="p-2 text-neutral-400 hover:text-white hover:bg-neutral-700 rounded transition-colors flex-shrink-0"
-                :title="copied === 'key' ? '¡Copiado!' : 'Copiar'"
+                :title="copied === 'key' ? t('copied') : t('copy')"
               >
                 <svg v-if="copied !== 'key'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -181,7 +182,7 @@ const toggleCommit = () => {
           </div>
 
           <div>
-            <p class="text-xs text-neutral-400 mb-2 uppercase tracking-wide">Copiar confirmación Git de ejemplo</p>
+            <p class="text-xs text-neutral-400 mb-2 uppercase tracking-wide">{{ t('copyCommit') }}</p>
             <div class="flex items-center gap-2">
               <code class="flex-1 text-xs bg-neutral-900 text-neutral-200 p-2 rounded font-mono overflow-x-auto">
                 {{ gitCommitCommand }}
@@ -189,7 +190,7 @@ const toggleCommit = () => {
               <button
                 @click="copyToClipboard(gitCommitCommand, 'commit')"
                 class="p-2 text-neutral-400 hover:text-white hover:bg-neutral-700 rounded transition-colors flex-shrink-0"
-                :title="copied === 'commit' ? '¡Copiado!' : 'Copiar'"
+                :title="copied === 'commit' ? t('copied') : t('copy')"
               >
                 <svg v-if="copied !== 'commit'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -202,7 +203,7 @@ const toggleCommit = () => {
           </div>
 
           <p class="text-xs text-neutral-500">
-            Comando para Bash o Git Bash. Incluye la clave de la tarea en el mensaje.
+            {{ t('gitShell') }}
           </p>
         </div>
       </div>

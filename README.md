@@ -8,8 +8,8 @@ The frontend is built with Nuxt and can be deployed as a static site. The includ
 
 **Requirements** — Node.js 22, pnpm 10, and a new Supabase project with email sign-in enabled.
 
-1. In the Supabase SQL Editor, run [`001_schema.sql`](database/001_schema.sql) and then [`002_supabase.sql`](database/002_supabase.sql). Run each script once, in order, on a fresh database.
-2. Copy [`.env.example`](.env.example) to `.env`. Set `NUXT_PUBLIC_SUPABASE_URL` to your project URL and `NUXT_PUBLIC_SUPABASE_KEY` to your publishable key. A legacy `anon` key also works. Keep database passwords and Supabase secret or `service_role` keys server-side.
+1. In the Supabase SQL Editor, run [`001_schema.sql`](database/001_schema.sql), [`002_supabase.sql`](database/002_supabase.sql), and [`003_project_management.sql`](database/003_project_management.sql) in that order. Run each script once on a fresh database.
+2. Create a local `.env` file using `.env.example` as a template. Set `NUXT_PUBLIC_SUPABASE_URL` to your project URL and `NUXT_PUBLIC_SUPABASE_KEY` to your publishable key. A legacy `anon` key also works. Keep database passwords and Supabase secret or `service_role` keys server-side.
 3. In Supabase **Authentication → URL Configuration**, set the **Site URL** to your app's origin and add `http://localhost:3000/auth/login` to the allowed redirect URLs for local development.
 4. From the repository root, install dependencies and start the development server.
 
@@ -18,7 +18,7 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Open `http://localhost:3000`, create an account, and confirm your email if required. Create a workspace and a project to open a board with four starter columns. Workspace owners can add other users by email after those users have registered and confirmed their accounts.
+Open `http://localhost:3000`, create an account, and confirm your email if required. Create a workspace and a project to open a board with four starter columns.
 
 [Nuxt Supabase configuration](https://supabase.nuxtjs.org/getting-started/introduction) · [Supabase Auth redirect URLs](https://supabase.com/docs/guides/auth/redirect-urls)
 
@@ -28,7 +28,11 @@ Open `http://localhost:3000`, create an account, and confirm your email if requi
 | --- | --- |
 | [`database/001_schema.sql`](database/001_schema.sql) | Creates the application tables, relationships, constraints, and indexes, and enables row-level security. |
 | [`database/002_supabase.sql`](database/002_supabase.sql) | Connects the schema to Supabase Auth and adds access policies, database functions, and triggers. |
-| [`database/tests/smoke_supabase.sql`](database/tests/smoke_supabase.sql) | Checks setup and access with temporary users. Run it in a test project after both setup scripts. It rolls back its test data. |
+| [`database/003_project_management.sql`](database/003_project_management.sql) | Adds project archiving, workspace invitations and member removal, and task due dates. |
+| [`database/tests/smoke_supabase.sql`](database/tests/smoke_supabase.sql) | Checks setup and access with temporary users. |
+| [`database/tests/smoke_project_management.sql`](database/tests/smoke_project_management.sql) | Checks project permissions, invitation acceptance, member removal, and due dates. |
+
+Run the smoke tests in a test project after all three setup scripts. Each test rolls back its data.
 
 | Tables | Purpose |
 | --- | --- |
@@ -42,15 +46,23 @@ Open `http://localhost:3000`, create an account, and confirm your email if requi
 
 [Supabase row-level security](https://supabase.com/docs/guides/database/postgres/row-level-security)
 
+### Projects, invitations, and due dates
+
+Workspace owners can edit, archive, and restore projects from the dashboard. Archived projects live under **Archived projects** and are excluded from active dashboard counts. Their boards and tasks are still accessible. Workspace owners can also remove members from workspace settings. Removing a member clears their task assignments in that workspace and preserves task history.
+
+In workspace settings, choose **Create invitation** to get a link for a specific email address. Copy the link or use **Open email draft** to compose a message in your email app. The recipient opens the link, signs in or registers with the invited address, confirms the address if required, and accepts the invitation. Links expire after seven days and can be used once. Generating another link for the same address replaces the previous one.
+
+Add an optional due date in the task editor. You can combine **My tasks** with **Overdue** or **Due this week**. The week runs from Monday to Sunday in your local calendar. The overdue filter excludes completed tasks.
+
 ### Using another PostgreSQL provider
 
 Apply `001_schema.sql` to a fresh PostgreSQL 14 or later database. It provides the application schema with row-level security enabled. The second script depends on Supabase Auth and its database roles.
 
-To run Zboard against a different provider, connect the frontend to a compatible API or build a backend that manages authentication, maps identities to `profiles.id`, and enforces workspace access. The backend must also provide the board's data operations and equivalents for the two database functions. Store `DATABASE_URL` on the server.
+To run Zboard against a different provider, connect the frontend to a compatible API or build a backend that manages authentication, maps identities to `profiles.id`, and enforces workspace access. Use the additional scripts as a reference for the data operations, database functions, and triggers your backend needs. Store `DATABASE_URL` on the server.
 
 ### Upgrading an existing database
 
-The setup scripts initialize a fresh database. For an existing deployment, compare its schema, functions, and access policies with the templates and test an incremental migration on a copy. The frontend expects both database functions and the triggers for workspace ownership, starter columns, and notifications.
+If you already applied `001_schema.sql` and `002_supabase.sql`, run `003_project_management.sql` once before deploying this frontend. Existing projects start as active and existing tasks have an empty due date. If your deployment uses a customized schema, check the migration against a copy first.
 
 ## Deployment
 

@@ -4,7 +4,7 @@
     <header
       class="lg:hidden border-b border-neutral-800 p-4 flex items-center justify-between"
     >
-      <button @click="sidebarOpen = true" class="p-2 -ml-2">
+      <button @click="sidebarOpen = true" :aria-label="t('menu')" class="p-2 -ml-2">
         <svg
           class="w-6 h-6"
           fill="none"
@@ -30,7 +30,7 @@
           project?.name
         }}</span>
       </div>
-      <button @click="openNewTask" class="p-2 -mr-2 text-cyan-400">
+      <button v-if="project" @click="openNewTask" :aria-label="t('newTask')" class="p-2 -mr-2 text-cyan-400">
         <svg
           class="w-6 h-6"
           fill="none"
@@ -69,7 +69,7 @@
           </div>
           <span class="font-bold">Zboard</span>
         </NuxtLink>
-        <button @click="sidebarOpen = false" class="lg:hidden p-2 -mr-2">
+        <button @click="sidebarOpen = false" :aria-label="t('closeMenu')" class="lg:hidden p-2 -mr-2">
           <svg
             class="w-5 h-5"
             fill="none"
@@ -86,6 +86,7 @@
         </button>
       </div>
 
+      <AppLanguagePicker class="mb-4 self-start" />
       <nav class="flex-1 space-y-1">
         <NuxtLink
           to="/dashboard"
@@ -105,12 +106,12 @@
               d="M10 19l-7-7m0 0l7-7m-7 7h18"
             />
           </svg>
-          Volver al Dashboard
+          {{ t('backToDashboard') }}
         </NuxtLink>
 
         <div class="pt-4 pb-2">
           <span class="px-3 text-xs font-medium text-neutral-500 uppercase"
-            >Filtrar por usuario</span
+            >{{ t('filterByUser') }}</span
           >
         </div>
         <button
@@ -134,12 +135,12 @@
               d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
             />
           </svg>
-          Todos
+          {{ t('all') }}
         </button>
 
         <div class="pt-2 pb-2">
           <span class="px-3 text-xs font-medium text-neutral-500 uppercase"
-            >Equipo</span
+            >{{ t('team') }}</span
           >
         </div>
         <button
@@ -163,7 +164,7 @@
           }}</span>
         </button>
         <button
-          v-if="members.some((member) => member.user_id === getUserId(user) && member.role === 'owner')"
+          v-if="members.some((member) => member.user_id === accountId && member.role === 'owner')"
           @click="
             showInvite = true;
             sidebarOpen = false;
@@ -183,12 +184,12 @@
               d="M12 4v16m8-8H4"
             />
           </svg>
-          Agregar miembro
+          {{ t('addMember') }}
         </button>
 
         <div class="pt-4 pb-2">
           <span class="px-3 text-xs font-medium text-neutral-500 uppercase"
-            >Etiquetas</span
+            >{{ t('labels') }}</span
           >
         </div>
         <button
@@ -212,7 +213,7 @@
               d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
             />
           </svg>
-          Todas
+          {{ t('all') }}
         </button>
         <div
           v-for="label in labels"
@@ -269,12 +270,12 @@
               d="M12 4v16m8-8H4"
             />
           </svg>
-          Nueva etiqueta
+          {{ t('newLabel') }}
         </button>
 
         <div class="pt-4 pb-2">
           <span class="px-3 text-xs font-medium text-neutral-500 uppercase"
-            >Documentos</span
+            >{{ t('documents') }}</span
           >
         </div>
         <button
@@ -316,11 +317,11 @@
               d="M12 4v16m8-8H4"
             />
           </svg>
-          Nuevo documento
+          {{ t('newDocument') }}
         </button>
         <div class="pt-4 pb-2">
           <span class="px-3 text-xs font-medium text-neutral-500 uppercase"
-            >Actividad</span
+            >{{ t('activity') }}</span
           >
         </div>
         <button
@@ -343,13 +344,17 @@
               d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
             />
           </svg>
-          Ver historial
+          {{ t('viewHistory') }}
         </button>
       </nav>
     </aside>
 
     <!-- Main -->
-    <main class="flex-1 flex flex-col overflow-hidden">
+    <main v-if="projectLoadError" class="flex-1 p-6" role="alert">
+      <p class="mb-4">{{ t('projectLoadError') }}</p>
+      <NuxtLink to="/dashboard" class="btn-secondary">{{ t('backToProjects') }}</NuxtLink>
+    </main>
+    <main v-else class="flex-1 flex flex-col overflow-hidden">
       <header class="hidden lg:block border-b border-neutral-800 p-4">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
@@ -361,10 +366,10 @@
             </div>
             <div>
               <h1 class="text-xl font-bold">
-                {{ project?.name || "Cargando..." }}
+                {{ project?.name || t('loading') }}
               </h1>
               <p class="text-sm text-neutral-400">
-                {{ filteredTasks.length }} tareas<span
+                {{ countTasks(filteredTasks.length) }}<span
                   v-if="filterByUser"
                   class="text-cyan-400"
                 >
@@ -377,10 +382,10 @@
           </div>
           <div class="flex gap-2">
             <button @click="showAddColumn = true" class="btn-secondary">
-              + Columna
+              {{ t('addColumn') }}
             </button>
             <button @click="openNewTask" class="btn-primary">
-              + Nueva tarea
+              {{ t('addNewTask') }}
             </button>
           </div>
         </div>
@@ -390,15 +395,31 @@
         class="lg:hidden border-b border-neutral-800 p-3 flex items-center gap-2"
       >
         <span class="text-xs text-neutral-500"
-          >{{ filteredTasks.length }} tareas</span
+          >{{ countTasks(filteredTasks.length) }}</span
         >
         <div class="flex-1" />
         <button
           @click="showAddColumn = true"
           class="btn-secondary text-sm py-1.5 px-3"
         >
-          + Columna
+          {{ t('addColumn') }}
         </button>
+      </div>
+
+      <div v-if="project" class="flex flex-wrap items-center gap-2 border-b border-neutral-800 px-4 py-3">
+        <p v-if="project.archived_at" class="mr-2 text-sm text-amber-300">{{ t('projectArchived') }}</p>
+        <button
+          v-if="accountId"
+          type="button"
+          :class="filterByUser === accountId ? 'btn-primary' : 'btn-secondary'"
+          :aria-pressed="filterByUser === accountId"
+          @click="filterByUser = filterByUser === accountId ? null : accountId"
+        >{{ t('myTasks') }}</button>
+        <select v-model="dueFilter" :aria-label="t('dueDate')" class="input w-auto text-sm">
+          <option value="all">{{ t('allDates') }}</option>
+          <option value="overdue">{{ t('overdue') }}</option>
+          <option value="week">{{ t('dueThisWeek') }}</option>
+        </select>
       </div>
 
       <div class="flex-1 overflow-x-auto p-4 lg:p-6">
@@ -406,7 +427,7 @@
           v-if="statuses.length === 0"
           class="text-neutral-400 text-center py-8"
         >
-          Cargando...
+          {{ t('loading') }}
         </div>
         <div
           v-else
@@ -428,7 +449,7 @@
                     :style="{ backgroundColor: column.color }"
                   />
                   <h3 class="font-medium text-sm lg:text-base">
-                    {{ column.name }}
+                    {{ statusLabel(column.name) }}
                   </h3>
                   <span
                     class="text-xs text-neutral-500 bg-neutral-800 px-1.5 py-0.5 rounded"
@@ -436,7 +457,7 @@
                   >
                 </div>
                 <button
-                  v-if="!isDefaultColumn(column.name)"
+                  v-if="!isStarterStatus(column.name)"
                   @click="editColumn(column)"
                   class="text-neutral-500 hover:text-neutral-300 p-1"
                 >
@@ -498,6 +519,9 @@
                         <span v-else>{{ part.text }}</span>
                       </template>
                     </p>
+                    <p v-if="element.due_date" class="mb-2 text-xs" :class="isTaskOverdue(element) ? 'text-red-300' : 'text-neutral-400'">
+                      {{ t(isTaskOverdue(element) ? 'overdueOn' : 'dueOn', { date: formatTaskDate(element.due_date, locale) }) }}
+                    </p>
                     <div class="flex items-center justify-between">
                       <span
                         class="text-xs px-2 py-0.5 rounded-full"
@@ -533,7 +557,7 @@
                 @click="addTaskToColumn(column.id)"
                 class="w-full mt-2 p-2 text-sm text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800 rounded-lg transition-colors"
               >
-                + Añadir tarea
+                {{ t('addTask') }}
               </button>
             </div>
           </div>
@@ -551,7 +575,7 @@
       >
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-lg font-bold">
-            {{ editingTask ? "Editar tarea" : "Nueva tarea" }}
+            {{ editingTask ? t('editTask') : t('newTask') }}
           </h2>
           <button
             @click="closeTaskModal"
@@ -575,30 +599,30 @@
         <form @submit.prevent="saveTask" class="space-y-4">
           <div>
             <label class="block text-sm font-medium text-neutral-400 mb-1.5"
-              >Título</label
+              >{{ t('title') }}</label
             ><input
               v-model="taskForm.title"
               type="text"
               class="input"
-              placeholder="¿Qué hay que hacer?"
+              :placeholder="t('taskTitlePlaceholder')"
               required
             />
           </div>
           <div class="relative">
             <label class="block text-sm font-medium text-neutral-400 mb-1.5"
-              >Descripción</label
+              >{{ t('description') }}</label
             >
             <textarea
               ref="descriptionInput"
               v-model="taskForm.description"
               class="input"
               rows="3"
-              placeholder="Usa @documento para referencias"
+              :placeholder="t('taskDescriptionPlaceholder')"
               @input="onDescriptionInput"
               @keydown="onDescriptionKeydown"
             ></textarea>
             <p class="text-xs text-neutral-500 mt-1">
-              Escribe @ para insertar documentos
+              {{ t('documentMentionHint') }}
             </p>
             <div
               v-if="showAutocomplete && filteredDocuments.length > 0"
@@ -633,26 +657,30 @@
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-sm font-medium text-neutral-400 mb-1.5"
-                >Estado</label
+                >{{ t('status') }}</label
               ><select v-model="taskForm.status_id" class="input text-sm">
                 <option v-for="col in statuses" :key="col.id" :value="col.id">
-                  {{ col.name }}
+                  {{ statusLabel(col.name) }}
                 </option>
               </select>
             </div>
             <div>
               <label class="block text-sm font-medium text-neutral-400 mb-1.5"
-                >Prioridad</label
+                >{{ t('priority') }}</label
               ><select v-model="taskForm.priority" class="input text-sm">
-                <option value="low">Baja</option>
-                <option value="medium">Media</option>
-                <option value="high">Alta</option>
+                <option value="low">{{ t('low') }}</option>
+                <option value="medium">{{ t('medium') }}</option>
+                <option value="high">{{ t('high') }}</option>
               </select>
             </div>
           </div>
+          <label class="block text-sm font-medium text-neutral-400">
+            {{ t('dueDate') }}
+            <input v-model="taskForm.due_date" type="date" min="0001-01-01" max="9999-12-31" class="input mt-1.5 text-sm">
+          </label>
           <div>
             <label class="block text-sm font-medium text-neutral-400 mb-1.5"
-              >Etiquetas</label
+              >{{ t('labels') }}</label
             >
             <div class="flex flex-wrap gap-2">
               <button
@@ -678,7 +706,7 @@
           </div>
           <div>
             <label class="block text-sm font-medium text-neutral-400 mb-1.5"
-              >Asignar a</label
+              >{{ t('assignTo') }}</label
             >
             <div class="space-y-1 max-h-32 overflow-y-auto">
               <label
@@ -710,7 +738,7 @@
               @click="deleteTask"
               class="btn-secondary text-red-400 text-sm"
             >
-              Eliminar
+              {{ t('delete') }}
             </button>
             <div class="flex-1"></div>
             <button
@@ -718,10 +746,10 @@
               @click="closeTaskModal"
               class="btn-secondary text-sm"
             >
-              Cancelar
+              {{ t('cancel') }}
             </button>
             <button type="submit" class="btn-primary text-sm">
-              {{ editingTask ? "Guardar" : "Crear" }}
+              {{ editingTask ? t('save') : t('create') }}
             </button>
           </div>
         </form>
@@ -749,7 +777,7 @@
       >
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-lg font-bold">
-            {{ editingLabel ? "Editar etiqueta" : "Nueva etiqueta" }}
+            {{ editingLabel ? t('editLabel') : t('newLabel') }}
           </h2>
           <button
             @click="closeLabelModal"
@@ -773,18 +801,18 @@
         <form @submit.prevent="saveLabel" class="space-y-4">
           <div>
             <label class="block text-sm font-medium text-neutral-400 mb-1.5"
-              >Nombre</label
+              >{{ t('name') }}</label
             ><input
               v-model="labelForm.name"
               type="text"
               class="input"
-              placeholder="frontend, bug..."
+              :placeholder="t('labelPlaceholder')"
               required
             />
           </div>
           <div>
             <label class="block text-sm font-medium text-neutral-400 mb-1.5"
-              >Color</label
+              >{{ t('color') }}</label
             >
             <div class="flex gap-2 flex-wrap">
               <button
@@ -805,7 +833,7 @@
               @click="deleteLabel"
               class="btn-secondary text-red-400 text-sm"
             >
-              Eliminar
+              {{ t('delete') }}
             </button>
             <div class="flex-1"></div>
             <button
@@ -813,9 +841,9 @@
               @click="closeLabelModal"
               class="btn-secondary text-sm"
             >
-              Cancelar</button
+              {{ t('cancel') }}</button
             ><button type="submit" class="btn-primary text-sm">
-              {{ editingLabel ? "Guardar" : "Crear" }}
+              {{ editingLabel ? t('save') : t('create') }}
             </button>
           </div>
         </form>
@@ -832,7 +860,7 @@
       >
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-lg font-bold">
-            {{ editingColumn ? "Editar columna" : "Nueva columna" }}
+            {{ editingColumn ? t('editColumn') : t('newColumn') }}
           </h2>
           <button
             @click="closeColumnModal"
@@ -856,18 +884,18 @@
         <form @submit.prevent="saveColumn" class="space-y-4">
           <div>
             <label class="block text-sm font-medium text-neutral-400 mb-1.5"
-              >Nombre</label
+              >{{ t('name') }}</label
             ><input
               v-model="columnForm.name"
               type="text"
               class="input"
-              placeholder="Nombre"
+              :placeholder="t('name')"
               required
             />
           </div>
           <div>
             <label class="block text-sm font-medium text-neutral-400 mb-1.5"
-              >Color</label
+              >{{ t('color') }}</label
             >
             <div class="flex gap-2 flex-wrap">
               <button
@@ -888,7 +916,7 @@
               @click="deleteColumn"
               class="btn-secondary text-red-400 text-sm"
             >
-              Eliminar
+              {{ t('delete') }}
             </button>
             <div class="flex-1"></div>
             <button
@@ -896,9 +924,9 @@
               @click="closeColumnModal"
               class="btn-secondary text-sm"
             >
-              Cancelar</button
+              {{ t('cancel') }}</button
             ><button type="submit" class="btn-primary text-sm">
-              {{ editingColumn ? "Guardar" : "Crear" }}
+              {{ editingColumn ? t('save') : t('create') }}
             </button>
           </div>
         </form>
@@ -907,14 +935,14 @@
 
     <!-- Modal Invitar -->
     <div
-      v-if="showInvite"
+      v-if="showInvite && project"
       class="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50"
     >
       <div
         class="card p-4 sm:p-6 w-full sm:max-w-md rounded-t-2xl sm:rounded-xl"
       >
         <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-bold">Agregar miembro al espacio</h2>
+          <h2 class="text-lg font-bold">{{ t('addWorkspaceMember') }}</h2>
           <button
             @click="showInvite = false"
             class="p-2 -mr-2 text-neutral-400 hover:text-white"
@@ -934,39 +962,7 @@
             </svg>
           </button>
         </div>
-        <form @submit.prevent="inviteMember" class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-neutral-400 mb-1.5"
-              >Email</label
-            ><input
-              v-model="inviteEmail"
-              type="email"
-              class="input"
-              placeholder="email@ejemplo.com"
-              required
-            />
-          </div>
-          <p class="text-sm text-neutral-500">
-            El usuario debe estar registrado.
-          </p>
-          <div v-if="inviteError" class="text-red-400 text-sm">
-            {{ inviteError }}
-          </div>
-          <div v-if="inviteSuccess" class="text-green-400 text-sm">
-            {{ inviteSuccess }}
-          </div>
-          <div class="flex gap-3 pt-2">
-            <button
-              type="button"
-              @click="showInvite = false"
-              class="btn-secondary flex-1 text-sm"
-            >
-              Cancelar</button
-            ><button type="submit" class="btn-primary flex-1 text-sm">
-              Agregar
-            </button>
-          </div>
-        </form>
+        <AppWorkspaceInviteForm :workspace-id="project.workspace_id" @member-added="loadMembers(project.workspace_id)" />
       </div>
     </div>
 
@@ -980,7 +976,7 @@
       >
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-lg font-bold">
-            {{ editingDocument ? "Editar documento" : "Nuevo documento" }}
+            {{ editingDocument ? t('editDocument') : t('newDocument') }}
           </h2>
           <button
             @click="closeDocumentModal"
@@ -1004,18 +1000,18 @@
         <form @submit.prevent="saveDocument" class="space-y-4">
           <div>
             <label class="block text-sm font-medium text-neutral-400 mb-1.5"
-              >Título</label
+              >{{ t('title') }}</label
             ><input
               v-model="documentForm.title"
               type="text"
               class="input"
-              placeholder="Titulo del documento"
+              :placeholder="t('documentTitlePlaceholder')"
               required
             />
           </div>
           <div>
             <label class="block text-sm font-medium text-neutral-400 mb-1.5"
-              >Slug (para @)</label
+              >{{ t('slug') }}</label
             >
             <div class="flex items-center gap-2">
               <span class="text-neutral-500">@</span
@@ -1023,22 +1019,21 @@
                 v-model="documentForm.slug"
                 type="text"
                 class="input flex-1"
-                placeholder="slug-del-documento"
+                :placeholder="t('slugPlaceholder')"
                 @input="sanitizeSlug"
                 required
               />
             </div>
-            <p class="text-xs text-neutral-500 mt-1">Sin espacios</p>
+            <p class="text-xs text-neutral-500 mt-1">{{ t('noSpaces') }}</p>
           </div>
           <div>
             <label class="block text-sm font-medium text-neutral-400 mb-1.5"
-              >Contenido</label
+              >{{ t('content') }}</label
             ><textarea
               v-model="documentForm.content"
               class="input font-mono text-sm"
               rows="10"
-              placeholder="Email: user@gmail.com
-Password: 123456"
+              :placeholder="t('documentContentPlaceholder')"
             ></textarea>
           </div>
           <div class="flex gap-3 pt-2">
@@ -1048,7 +1043,7 @@ Password: 123456"
               @click="deleteDocument"
               class="btn-secondary text-red-400 text-sm"
             >
-              Eliminar
+              {{ t('delete') }}
             </button>
             <div class="flex-1"></div>
             <button
@@ -1056,9 +1051,9 @@ Password: 123456"
               @click="closeDocumentModal"
               class="btn-secondary text-sm"
             >
-              Cancelar</button
+              {{ t('cancel') }}</button
             ><button type="submit" class="btn-primary text-sm">
-              {{ editingDocument ? "Guardar" : "Crear" }}
+              {{ editingDocument ? t('save') : t('create') }}
             </button>
           </div>
         </form>
@@ -1139,10 +1134,10 @@ Password: 123456"
                 stroke-width="1.5"
                 d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
               /></svg
-            >{{ copied ? "Copiado!" : "Copiar" }}
+            >{{ copied ? t('copied') : t('copy') }}
           </button>
           <button @click="showViewDocument = false" class="btn-primary text-sm">
-            Cerrar
+            {{ t('close') }}
           </button>
         </div>
       </div>
@@ -1167,6 +1162,9 @@ Password: 123456"
 </template>
 
 <script setup lang="ts">
+import type { TaskDueFilter } from '~/utils/taskDates'
+
+const { t, locale, countTasks, statusLabel, isStarterStatus, priorityLabel } = useInterfaceLanguage()
 import draggable from "vuedraggable";
 
 definePageMeta({ middleware: "auth" });
@@ -1174,9 +1172,12 @@ definePageMeta({ middleware: "auth" });
 const route = useRoute();
 const supabase = useSupabaseClient();
 const user = useSupabaseUser();
+const session = useSupabaseSession();
+const accountId = computed(() => session.value?.user.id ?? getUserId(user.value));
 
 const projectId = route.params.id as string;
 const project = ref<any>(null);
+const projectLoadError = ref(false);
 const tasks = ref<any[]>([]);
 const statuses = ref<any[]>([]);
 const members = ref<any[]>([]);
@@ -1184,6 +1185,13 @@ const labels = ref<any[]>([]);
 const documents = ref<any[]>([]);
 const filterByUser = ref<string | null>(null);
 const filterByLabel = ref<string | null>(null);
+const dueFilter = ref<TaskDueFilter>('all');
+const dates = ref(taskDateWindow(new Date()));
+const completedStatusIds = computed(() => new Set(
+  statuses.value.filter(status => isCompletedStatus(status.name)).map(status => status.id)
+));
+const isTaskOverdue = (task: { due_date?: string | null, status_id: string }) =>
+  matchesTaskDueFilter(task.due_date, 'overdue', dates.value, completedStatusIds.value.has(task.status_id));
 const sidebarOpen = ref(false);
 
 const showTaskModal = ref(false);
@@ -1193,6 +1201,7 @@ const taskForm = ref({
   description: "",
   status_id: "",
   priority: "medium",
+  due_date: "",
   assignee_ids: [] as string[],
   label_ids: [] as string[],
 });
@@ -1237,17 +1246,7 @@ const columnColors = [
   "#8b5cf6",
   "#ec4899",
 ];
-const defaultColumns = [
-  "Por hacer",
-  "En progreso",
-  "En revisión",
-  "Completado",
-];
-
 const showInvite = ref(false);
-const inviteEmail = ref("");
-const inviteError = ref("");
-const inviteSuccess = ref("");
 
 const showDocumentModal = ref(false);
 const showViewDocument = ref(false);
@@ -1266,12 +1265,15 @@ const filteredTasks = computed(() => {
     result = result.filter((t) =>
       t.labels?.some((l: any) => l.id === filterByLabel.value)
     );
+  if (dueFilter.value !== 'all')
+    result = result.filter(task => matchesTaskDueFilter(
+      task.due_date, dueFilter.value, dates.value, completedStatusIds.value.has(task.status_id),
+    ));
   return result;
 });
 
 const getTasksByStatus = (statusId: string) =>
   filteredTasks.value.filter((t) => t.status_id === statusId);
-const isDefaultColumn = (name: string) => defaultColumns.includes(name);
 const getAvatarColor = (userId: string) =>
   ["#ef4444", "#f59e0b", "#10b981", "#06b6d4", "#8b5cf6", "#ec4899", "#6366f1"][
     userId.charCodeAt(0) % 7
@@ -1287,17 +1289,15 @@ const getInitials = (name: string) =>
     : "?";
 const getMemberName = (userId: string) => {
   const m = members.value.find((m) => m.user_id === userId);
-  return m?.full_name || m?.email?.split("@")[0] || "Usuario";
+  return m?.full_name || m?.email?.split("@")[0] || t('user');
 };
 const getLabelName = (labelId: string) =>
-  labels.value.find((l) => l.id === labelId)?.name || "Etiqueta";
+  labels.value.find((l) => l.id === labelId)?.name || t('label');
 const priorityClass = (p: string) => ({
   "bg-red-500/20 text-red-400": p === "high",
   "bg-amber-500/20 text-amber-400": p === "medium",
   "bg-neutral-700 text-neutral-400": p === "low",
 });
-const priorityLabel = (p: string) =>
-  ({ high: "Alta", medium: "Media", low: "Baja" }[p] || p);
 const getUserId = (u: any) => u?.id || u?.sub || null;
 const toggleLabel = (id: string) => {
   const i = taskForm.value.label_ids.indexOf(id);
@@ -1360,7 +1360,7 @@ const onDragChange = async (e: any, statusId: string) => {
   const { data, error } = await supabase.from("tasks")
     .update({ status_id: statusId }).eq("id", e.added.element.id).select("id").single();
   if (error || !data) {
-    alert("No se pudo mover la tarea");
+    alert(t('taskMoveError'));
   }
   await loadTasks();
 };
@@ -1372,6 +1372,7 @@ const openNewTask = () => {
     description: "",
     status_id: statuses.value[0]?.id || "",
     priority: "medium",
+    due_date: "",
     assignee_ids: [],
     label_ids: [],
   };
@@ -1384,6 +1385,7 @@ const addTaskToColumn = (statusId: string) => {
     description: "",
     status_id: statusId,
     priority: "medium",
+    due_date: "",
     assignee_ids: [],
     label_ids: [],
   };
@@ -1396,6 +1398,7 @@ const openEditTask = (task: any) => {
     description: task.description || "",
     status_id: task.status_id,
     priority: task.priority,
+    due_date: task.due_date || "",
     assignee_ids: task.assignees?.map((a: any) => a.user_id) || [],
     label_ids: task.labels?.map((l: any) => l.id) || [],
   };
@@ -1414,7 +1417,7 @@ const saveTask = async () => {
   savingTask.value = true;
   try {
     const form = taskForm.value;
-    const { error } = await supabase.rpc("save_board_task", {
+    const { error } = await supabase.rpc("save_board_task_with_due_date", {
       board: projectId,
       task: editingTask.value?.id ?? null,
       task_title: form.title,
@@ -1423,9 +1426,11 @@ const saveTask = async () => {
       task_priority: form.priority,
       assignees: form.assignee_ids,
       task_label_ids: form.label_ids,
+      task_due_date: form.due_date || null,
     });
     if (error) {
-      alert("No se pudo guardar la tarea: " + error.message);
+      console.error('Could not save task:', error);
+      alert(t('taskSaveError'));
       return;
     }
     closeTaskModal();
@@ -1437,7 +1442,7 @@ const saveTask = async () => {
 
 const deleteTask = async () => {
   if (!editingTask.value) return;
-  if (!confirm(`¿Eliminar "${editingTask.value.title}"?`)) return;
+  if (!confirm(t('deleteItemConfirm', { name: editingTask.value.title }))) return;
 
   const taskId = editingTask.value.id;
 
@@ -1448,7 +1453,7 @@ const deleteTask = async () => {
 
   if (error) {
     console.error("Error eliminando tarea:", error);
-    alert("Error al eliminar la tarea");
+    alert(t('taskDeleteError'));
     return;
   }
 
@@ -1515,12 +1520,13 @@ const saveLabel = async () => {
 const deleteLabel = async () => {
   if (
     !editingLabel.value ||
-    !confirm(`¿Eliminar "${editingLabel.value.name}"?`)
+    !confirm(t('deleteItemConfirm', { name: editingLabel.value.name }))
   )
     return;
   const { error } = await supabase.from("labels").delete().eq("id", editingLabel.value.id);
   if (error) {
-    alert("No se pudo eliminar la etiqueta: " + error.message);
+    console.error('Could not delete label:', error);
+    alert(t('labelDeleteError'));
     return;
   }
   labels.value = labels.value.filter((l) => l.id !== editingLabel.value.id);
@@ -1570,38 +1576,19 @@ const saveColumn = async () => {
 const deleteColumn = async () => {
   if (!editingColumn.value) return;
   if (tasks.value.some((t) => t.status_id === editingColumn.value.id)) {
-    alert("Columna tiene tareas");
+    alert(t('columnHasTasks'));
     return;
   }
   const { error } = await supabase.from("task_statuses").delete().eq("id", editingColumn.value.id);
   if (error) {
-    alert("No se pudo eliminar la columna: " + error.message);
+    console.error('Could not delete column:', error);
+    alert(t('columnDeleteError'));
     return;
   }
   statuses.value = statuses.value.filter(
     (s) => s.id !== editingColumn.value.id
   );
   closeColumnModal();
-};
-
-const inviteMember = async () => {
-  inviteError.value = "";
-  inviteSuccess.value = "";
-  const { error } = await supabase.rpc("add_workspace_member", {
-    workspace: project.value.workspace_id,
-    member_email: inviteEmail.value,
-  });
-  if (error) {
-    inviteError.value = error.message;
-    return;
-  }
-  await loadMembers(project.value.workspace_id);
-  inviteSuccess.value = "¡Miembro agregado!";
-  inviteEmail.value = "";
-  setTimeout(() => {
-    showInvite.value = false;
-    inviteSuccess.value = "";
-  }, 1500);
 };
 
 const openNewDocument = () => {
@@ -1671,7 +1658,7 @@ const saveDocument = async () => {
 const deleteDocument = async () => {
   if (
     !editingDocument.value ||
-    !confirm(`¿Eliminar "${editingDocument.value.title}"?`)
+    !confirm(t('deleteItemConfirm', { name: editingDocument.value.title }))
   )
     return;
   await supabase
@@ -1696,15 +1683,17 @@ const copyDocumentContent = async () => {
 };
 
 const loadProject = async () => {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("projects")
     .select("*")
     .eq("id", projectId)
     .single();
-  if (data) {
-    project.value = data;
-    loadMembers(data.workspace_id);
+  if (error || !data) {
+    projectLoadError.value = true;
+    return;
   }
+  project.value = data;
+  await loadMembers(data.workspace_id);
 };
 const loadStatuses = async () => {
   const { data } = await supabase
@@ -1819,11 +1808,14 @@ const loadMembers = async (workspaceId: string) => {
     }));
 };
 
+let dateTimer: ReturnType<typeof setInterval> | undefined;
 onMounted(async () => {
+  dates.value = taskDateWindow(new Date());
+  dateTimer = setInterval(() => {
+    dates.value = taskDateWindow(new Date());
+  }, 60_000);
   await loadProject();
-  await loadStatuses();
-  await loadLabels();
-  await loadDocuments();
-  await loadTasks();
+  if (project.value) await Promise.all([loadStatuses(), loadLabels(), loadDocuments(), loadTasks()]);
 });
+onUnmounted(() => clearInterval(dateTimer));
 </script>

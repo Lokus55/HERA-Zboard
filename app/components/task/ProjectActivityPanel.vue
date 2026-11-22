@@ -2,7 +2,7 @@
   <div class="flex flex-col h-full">
     <!-- Header -->
     <div class="flex items-center justify-between mb-4">
-      <h3 class="text-lg font-bold">Actividad del proyecto</h3>
+      <h3 class="text-lg font-bold">{{ t('projectActivity') }}</h3>
       <button
         @click="$emit('close')"
         class="p-2 -mr-2 text-neutral-400 hover:text-white"
@@ -36,14 +36,14 @@
             : 'border-neutral-700 text-neutral-400 hover:border-neutral-600'
         "
       >
-        {{ filter.label }}
+        {{ t(filter.label) }}
       </button>
     </div>
 
     <!-- Filtro por usuario -->
     <div class="mb-4">
       <select v-model="filterByUser" class="input text-sm w-full">
-        <option value="">Todos los usuarios</option>
+        <option value="">{{ t('allUsers') }}</option>
         <option v-for="user in users" :key="user.id" :value="user.id">
           {{ user.full_name || user.email }}
         </option>
@@ -52,14 +52,14 @@
 
     <!-- Lista de actividades -->
     <div v-if="loading" class="text-sm text-neutral-500 py-8 text-center">
-      Cargando actividad...
+      {{ t('loadingActivity') }}
     </div>
 
     <div
       v-else-if="filteredActivities.length === 0"
       class="text-sm text-neutral-500 py-8 text-center"
     >
-      No hay actividad registrada
+      {{ t('noActivity') }}
     </div>
 
     <div v-else class="flex-1 overflow-y-auto space-y-1 pr-1">
@@ -205,7 +205,7 @@
           <div class="flex-1 min-w-0">
             <p class="text-sm text-neutral-300">
               <span class="font-medium text-white">{{
-                activity.user_name || "Sistema"
+                activity.user_name || t('system')
               }}</span>
               {{ getActionText(activity) }}
             </p>
@@ -228,13 +228,15 @@
         @click="loadMore"
         class="w-full py-3 text-sm text-cyan-400 hover:text-cyan-300 text-center"
       >
-        Cargar más actividad
+        {{ t('moreActivity') }}
       </button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+const { t, locale, relativeTime } = useInterfaceLanguage()
+const getActionText = useTaskActivityText()
 const props = defineProps<{
   projectId: string;
   members: any[];
@@ -251,12 +253,12 @@ const pageSize = 50;
 const hasMore = ref(true);
 
 const filters = [
-  { label: "Creadas", value: "created" },
-  { label: "Movidas", value: "status_changed" },
-  { label: "Asignadas", value: "assigned" },
-  { label: "Etiquetas", value: "label_added,label_removed" },
-  { label: "Editadas", value: "updated" },
-];
+  { label: "createdFilter", value: "created" },
+  { label: "movedFilter", value: "status_changed" },
+  { label: "assignedFilter", value: "assigned" },
+  { label: "labels", value: "label_added,label_removed" },
+  { label: "editedFilter", value: "updated" },
+] as const;
 
 const activeFilters = ref<string[]>([]);
 const filterByUser = ref("");
@@ -381,63 +383,19 @@ const getActionIconClass = (action: string) => {
   return classes[action] || "bg-neutral-700 text-neutral-400";
 };
 
-const getActionText = (activity: any) => {
-  const action = activity.action;
-  const field = activity.field_name;
-  const oldVal = activity.old_value;
-  const newVal = activity.new_value;
-
-  switch (action) {
-    case "created":
-      return " creó una tarea";
-    case "status_changed":
-      return ` movió de "${oldVal}" a "${newVal}"`;
-    case "assigned":
-      return ` asignó a ${newVal}`;
-    case "unassigned":
-      return ` removió a ${oldVal}`;
-    case "label_added":
-      return ` agregó "${newVal}"`;
-    case "label_removed":
-      return ` quitó "${oldVal}"`;
-    case "updated":
-      if (field === "title") return " cambió el título";
-      if (field === "description") return " actualizó la descripción";
-      if (field === "priority")
-        return ` cambió prioridad a "${formatPriority(newVal)}"`;
-      return ` actualizó ${field}`;
-    case "deleted":
-      return " eliminó una tarea";
-    default:
-      return ` ${action}`;
-  }
-};
-
-const formatPriority = (priority: string) => {
-  const map: Record<string, string> = {
-    low: "Baja",
-    medium: "Media",
-    high: "Alta",
-    urgent: "Urgente",
-  };
-  return map[priority] || priority;
-};
-
 const formatDateGroup = (date: string) => {
   const d = new Date(date);
   const now = new Date();
   const diff = now.getTime() - d.getTime();
   const days = Math.floor(diff / 86400000);
 
-  if (days === 0) return "Hoy";
-  if (days === 1) return "Ayer";
-  if (days < 7) return `Hace ${days} días`;
+  if (days < 7) return relativeTime(-Math.max(0, days), "day");
 
-  return d.toLocaleDateString("es-MX", { day: "numeric", month: "long" });
+  return d.toLocaleDateString(locale.value, { day: "numeric", month: "long" });
 };
 
 const formatTime = (date: string) => {
-  return new Date(date).toLocaleTimeString("es-MX", {
+  return new Date(date).toLocaleTimeString(locale.value, {
     hour: "2-digit",
     minute: "2-digit",
   });

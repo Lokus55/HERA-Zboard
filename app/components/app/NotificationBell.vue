@@ -1,7 +1,8 @@
 <template>
   <div class="relative">
     <button 
-      @click="isOpen = !isOpen" 
+      @click="isOpen = !isOpen"
+      :aria-label="t('notifications')"
       class="relative p-2 text-neutral-400 hover:text-white transition-colors"
     >
       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -21,19 +22,19 @@
       class="absolute right-0 mt-2 w-80 bg-neutral-900 border border-neutral-800 rounded-xl shadow-xl z-50 overflow-hidden"
     >
       <div class="p-3 border-b border-neutral-800 flex items-center justify-between">
-        <h3 class="font-semibold">Notificaciones</h3>
+        <h3 class="font-semibold">{{ t('notifications') }}</h3>
         <button 
           v-if="unreadCount > 0"
           @click="markAllRead" 
           class="text-xs text-cyan-400 hover:text-cyan-300"
         >
-          Marcar todas leídas
+          {{ t('markAllRead') }}
         </button>
       </div>
 
       <div class="max-h-80 overflow-y-auto">
         <div v-if="notifications.length === 0" class="p-4 text-center text-neutral-500 text-sm">
-          No tienes notificaciones
+          {{ t('noNotifications') }}
         </div>
         
         <div 
@@ -64,9 +65,9 @@
             </div>
             <div class="flex-1 min-w-0">
               <p class="text-sm font-medium" :class="{ 'text-white': !notif.is_read, 'text-neutral-300': notif.is_read }">
-                {{ notif.title }}
+                {{ notif.type === 'task_assigned' ? t('taskAssignedTitle') : notif.title }}
               </p>
-              <p class="text-xs text-neutral-500 truncate">{{ notif.message }}</p>
+              <p class="text-xs text-neutral-500 truncate">{{ notificationMessage(notif) }}</p>
               <p class="text-xs text-neutral-600 mt-1">{{ formatTime(notif.created_at) }}</p>
             </div>
             <div v-if="!notif.is_read" class="w-2 h-2 rounded-full bg-cyan-400 flex-shrink-0 mt-2" />
@@ -78,6 +79,7 @@
 </template>
 
 <script setup lang="ts">
+const { t, relativeTime } = useInterfaceLanguage()
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const router = useRouter()
@@ -100,10 +102,16 @@ const formatTime = (date: string) => {
   const hours = Math.floor(diff / 3600000)
   const days = Math.floor(diff / 86400000)
   
-  if (minutes < 1) return 'Ahora'
-  if (minutes < 60) return `Hace ${minutes}m`
-  if (hours < 24) return `Hace ${hours}h`
-  return `Hace ${days}d`
+  if (minutes < 60) return relativeTime(-Math.max(0, minutes), "minute")
+  if (hours < 24) return relativeTime(-hours, "hour")
+  return relativeTime(-days, "day")
+}
+
+const notificationMessage = (notification: { type: string, message: string }) => {
+  if (notification.type !== "task_assigned") return notification.message
+  // Older and current database installs store the assignment message as Spanish text.
+  const assignment = /^Te han asignado "([\s\S]*)"$/.exec(notification.message)
+  return assignment ? t("taskAssignedMessage", { title: assignment[1] ?? "" }) : notification.message
 }
 
 const loadNotifications = async () => {

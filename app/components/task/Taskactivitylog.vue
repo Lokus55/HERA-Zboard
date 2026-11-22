@@ -1,22 +1,22 @@
 <template>
   <div class="space-y-3">
     <div class="flex items-center justify-between">
-      <h4 class="text-sm font-medium text-neutral-300">Historial de actividad</h4>
+      <h4 class="text-sm font-medium text-neutral-300">{{ t('activityHistory') }}</h4>
       <button 
         v-if="activities.length > 5 && !showAll" 
         @click="showAll = true"
         class="text-xs text-cyan-400 hover:text-cyan-300"
       >
-        Ver todo ({{ activities.length }})
+        {{ t('showAllActivity', { count: activities.length }) }}
       </button>
     </div>
 
     <div v-if="loading" class="text-sm text-neutral-500 py-4 text-center">
-      Cargando historial...
+      {{ t('loadingHistory') }}
     </div>
 
     <div v-else-if="activities.length === 0" class="text-sm text-neutral-500 py-4 text-center">
-      No hay actividad registrada
+      {{ t('noActivity') }}
     </div>
 
     <div v-else class="space-y-2 max-h-64 overflow-y-auto pr-1">
@@ -69,8 +69,8 @@
         <!-- Contenido -->
         <div class="flex-1 min-w-0">
           <p class="text-sm text-neutral-300">
-            <span class="font-medium text-white">{{ activity.user_name || 'Sistema' }}</span>
-            {{ getActionText(activity) }}
+            <span class="font-medium text-white">{{ activity.user_name || t('system') }}</span>
+            {{ getActionText(activity, true) }}
           </p>
           <p class="text-xs text-neutral-500 mt-0.5">
             {{ formatDate(activity.created_at) }}
@@ -84,12 +84,14 @@
       @click="showAll = false"
       class="text-xs text-neutral-400 hover:text-neutral-300 w-full text-center py-1"
     >
-      Mostrar menos
+      {{ t('showLess') }}
     </button>
   </div>
 </template>
 
 <script setup lang="ts">
+const { t, locale, relativeTime } = useInterfaceLanguage()
+const getActionText = useTaskActivityText()
 const props = defineProps<{
   taskId: string
 }>()
@@ -143,66 +145,6 @@ const getActionIconClass = (action: string) => {
   return classes[action] || 'bg-neutral-700 text-neutral-400'
 }
 
-const getActionText = (activity: any) => {
-  const action = activity.action
-  const field = activity.field_name
-  const oldVal = activity.old_value
-  const newVal = activity.new_value
-
-  switch (action) {
-    case 'created':
-      return ' creó esta tarea'
-    
-    case 'status_changed':
-      return ` movió de "${oldVal}" a "${newVal}"`
-    
-    case 'assigned':
-      return ` asignó a ${newVal}`
-    
-    case 'unassigned':
-      return ` removió a ${oldVal}`
-    
-    case 'label_added':
-      return ` agregó la etiqueta "${newVal}"`
-    
-    case 'label_removed':
-      return ` quitó la etiqueta "${oldVal}"`
-    
-    case 'updated':
-      if (field === 'title') {
-        return ` cambió el título de "${oldVal}" a "${newVal}"`
-      }
-      if (field === 'description') {
-        return ' actualizó la descripción'
-      }
-      if (field === 'priority') {
-        return ` cambió la prioridad de "${formatPriority(oldVal)}" a "${formatPriority(newVal)}"`
-      }
-      if (field === 'due_date') {
-        if (!oldVal && newVal) return ` estableció fecha límite: ${formatShortDate(newVal)}`
-        if (oldVal && !newVal) return ' eliminó la fecha límite'
-        return ` cambió fecha límite a ${formatShortDate(newVal)}`
-      }
-      return ` actualizó ${field}`
-    
-    case 'deleted':
-      return ' eliminó esta tarea'
-    
-    default:
-      return ` ${action}`
-  }
-}
-
-const formatPriority = (priority: string) => {
-  const map: Record<string, string> = {
-    'low': 'Baja',
-    'medium': 'Media',
-    'high': 'Alta',
-    'urgent': 'Urgente'
-  }
-  return map[priority] || priority
-}
-
 const formatDate = (date: string) => {
   const d = new Date(date)
   const now = new Date()
@@ -212,24 +154,15 @@ const formatDate = (date: string) => {
   const hours = Math.floor(diff / 3600000)
   const days = Math.floor(diff / 86400000)
   
-  if (minutes < 1) return 'Ahora mismo'
-  if (minutes < 60) return `Hace ${minutes} min`
-  if (hours < 24) return `Hace ${hours}h`
-  if (days < 7) return `Hace ${days} día${days > 1 ? 's' : ''}`
-  
-  return d.toLocaleDateString('es-MX', { 
+  if (minutes < 60) return relativeTime(-Math.max(0, minutes), "minute")
+  if (hours < 24) return relativeTime(-hours, "hour")
+  if (days < 7) return relativeTime(-days, "day")
+
+  return d.toLocaleDateString(locale.value, {
     day: 'numeric', 
     month: 'short',
     hour: '2-digit',
     minute: '2-digit'
-  })
-}
-
-const formatShortDate = (date: string) => {
-  if (!date) return ''
-  return new Date(date).toLocaleDateString('es-MX', { 
-    day: 'numeric', 
-    month: 'short' 
   })
 }
 
