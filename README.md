@@ -4,6 +4,10 @@ Zboard is a Kanban board for teams. Organize projects in workspaces, move tasks 
 
 The frontend is built with Nuxt and can be deployed as a static site. The included Supabase setup provides PostgreSQL, authentication, and the data API. Each deployment uses its own database and user accounts.
 
+## Demo
+
+![Zboard demo showing a task created with a due date and moved to In progress](docs/zboard-demo.gif)
+
 ## Quick start
 
 **Requirements** — Node.js 22, pnpm 10, and a new Supabase project with email sign-in enabled.
